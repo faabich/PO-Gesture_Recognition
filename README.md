@@ -17,7 +17,7 @@ Pycharm
 GitHub
 
 ## Installation des librairies / consolle de commande Python
-
-pip install mediapipe-rpi4
+- python version 3.12.9
+- `pip install -r requirements.txt`
 
 
