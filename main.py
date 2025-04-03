@@ -6,7 +6,6 @@ Version:      0.1
 Description:  Entry point for the HandGesture application
 """
 
-import mediapipe as mp
 import cv2
 import math
 from utils.hand_detector import HandDetector
