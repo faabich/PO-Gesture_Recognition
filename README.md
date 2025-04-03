@@ -16,7 +16,7 @@ pyautogui
 Pycharm 
 GitHub
 
-## Installation des librairies / consolle de commande Python
+## Installation des librairies / console de commande Python
 - python version 3.12.9
 - `pip install -r requirements.txt`
 
