@@ -19,11 +19,15 @@ while True:
     handLandmarks = handDetector.findHandLandMarks(image=frame, draw=True)
 
     if(len(handLandmarks) != 0):
+        # Position of top index and top thumb landmarks
         x1, y1 = handLandmarks[4][1], handLandmarks[4][2]
         x2, y2 = handLandmarks[8][1], handLandmarks[8][2]
+
+        # Claculate distance between 2 points
         length = math.hypot(x2-x1, y2-y1)
         print(length)
 
+        # dots and lines on hands
         cv2.circle(frame, (x1, y1), 5, (255, 0, 255), cv2.FILLED)
         cv2.circle(frame, (x2, y2), 5, (255, 0, 255), cv2.FILLED)
         cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 255), 3)

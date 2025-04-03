@@ -1,5 +1,5 @@
 """
-Name:         main.py
+Name:         hand_detector.py
 Author:       Alex Kamano, Kilian Testard, Alexandre Ramirez, Nathan Filipowitz et Fabian Rostello
 Date:         03.04.2025
 Version:      0.1
