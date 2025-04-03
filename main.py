@@ -21,10 +21,10 @@ while True:
         if result.multi_hand_landmarks:
             for hand_landmarks in result.multi_hand_landmarks:
                 mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hand.HAND_CONNECTIONS)
-                print(hand_landmarks)
+                # print(hand_landmarks)
         cv2.imshow("capture image", frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-cv2.destroyAllWindows()
 cap.release()
+cv2.destroyAllWindows()
