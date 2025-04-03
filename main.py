@@ -24,8 +24,8 @@ while True:
         length = math.hypot(x2-x1, y2-y1)
         print(length)
 
-        cv2.circle(image, (x1, y1), 15, (255, 0, 255), cv2.FILLED)
-        cv2.circle(image, (x2, y2), 15, (255, 0, 255), cv2.FILLED)
+        cv2.circle(image, (x1, y1), 5, (255, 0, 255), cv2.FILLED)
+        cv2.circle(image, (x2, y2), 5, (255, 0, 255), cv2.FILLED)
         cv2.line(image, (x1, y1), (x2, y2), (255, 0, 255), 3)
 
     cv2.imshow("Volume", image)

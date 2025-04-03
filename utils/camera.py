@@ -11,7 +11,7 @@ import cv2
 
 
 class VideoCamera(object):
-    def __init__(self, width=640, height=480, *args):
+    def __init__(self, width=640, height=480):
         # Video camera input
         self.cap = cv2.VideoCapture(0)
 
@@ -25,9 +25,7 @@ class VideoCamera(object):
         self.hand = self.mp_hand.Hands()
 
     def read(self):
-        # This method mimics the behavior of cv2.VideoCapture.read()
         return self.cap.read()
 
     def release(self):
-        # Also provide a method to release the camera
         self.cap.release()
