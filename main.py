@@ -14,11 +14,16 @@ import cv2
 import pyautogui
 import time
 
+
+# Constants variables
+CAMERA_WIDTH = 1600
+CAMERA_HEIGHT = 900
+
 # Video camera input
 cap = cv2.VideoCapture(0)
 # Width and height of window
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
 
 # screen size parameters
 screen_width, screen_height = pyautogui.size()
@@ -48,7 +53,7 @@ while True:
 
                 # get the index finger reference
                 index_finger = hand_landmarks.landmark[8]
-                x, y = int(index_finger.x * 320), int(index_finger.y * 240)
+                x, y = int(index_finger.x * CAMERA_WIDTH), int(index_finger.y * CAMERA_HEIGHT)
 
                 # convert to screen x and y coordinates
                 screen_x = int(index_finger.x * screen_width)
@@ -63,7 +68,7 @@ while True:
                 cv2.circle(frame, (x, y), 10, (0, 255, 0), -1) # -1 parameter for a full dot
 
         cv2.imshow("capture image", frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(20) & 0xFF == ord('q'):
             break
 
 cap.release()
