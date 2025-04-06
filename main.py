@@ -10,7 +10,6 @@ from utils.hand_detector import HandDetector
 from utils.camera import VideoCamera
 from utils.gesture import Gesture
 import cv2
-import time
 
 
 # Constants variables
@@ -18,7 +17,7 @@ CAMERA_WIDTH = 1600
 CAMERA_HEIGHT = 900
 
 # Camera initialisation
-cap = VideoCamera(width=CAMERA_WIDTH, height=CAMERA_HEIGHT)
+cap = VideoCamera(CAMERA_WIDTH, CAMERA_HEIGHT)
 
 # Create hand detector object for landmarks
 hand_detector = HandDetector()
