@@ -6,23 +6,20 @@ Version:      0.1
 Description:  Camera creation with opencv
 """
 
-import mediapipe as mp
+
 import cv2
 
 
 class VideoCamera(object):
-    def __init__(self, width=640, height=480):
+    def __init__(self, width=1600, height=900):
         # Video camera input
         self.cap = cv2.VideoCapture(0)
+        self.width = width
+        self.height = height
 
         # Width and height of window
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-
-        # MediaPipe initialization
-        self.mp_drawing = mp.solutions.drawing_utils
-        self.mp_hand = mp.solutions.hands
-        self.hand = self.mp_hand.Hands()
 
     def read(self):
         return self.cap.read()
