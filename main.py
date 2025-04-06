@@ -36,6 +36,7 @@ while True:
 
         # Select gesture
         gestures.move_mouse(landmarks, frame, CAMERA_WIDTH, CAMERA_HEIGHT)
+        gestures.click_mouse(landmarks, frame)
 
         # Show frame
         cv2.imshow("capture image", frame)

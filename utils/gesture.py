@@ -19,7 +19,7 @@ class Gesture:
         # screen size parameters
         self.screen_width, self.screen_height = pyautogui.size()
 
-    def click_gesture(self, landmarks, frame):
+    def click_mouse(self, landmarks, frame):
         # Process each hand's landmarks
         for hand_idx, hand_landmarks in enumerate(landmarks):
             x1, y1 = hand_landmarks[4][1], hand_landmarks[4][2]
@@ -34,6 +34,17 @@ class Gesture:
             cv2.circle(frame, (x1, y1), 5, (255, 0, 255), cv2.FILLED)
             cv2.circle(frame, (x2, y2), 5, (255, 0, 255), cv2.FILLED)
             cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 255), 3)
+
+            # click detection
+            if length < 30:
+                if not Gesture.clicking:
+                    pyautogui.mouseDown()
+                    Gesture.clicking = True
+
+            else:
+                if Gesture.clicking:
+                    pyautogui.mouseUp()
+                    Gesture.clicking = False
 
     def move_mouse(self, landmarks, frame, camera_width, camera_height):
         current_time = time.time()
@@ -55,4 +66,4 @@ class Gesture:
                 self.previous_time = current_time
 
             # draw the circle
-            cv2.circle(frame, (index_finger_x, index_finger_y), 10, (0, 255, 0), -1) # -1 parameter for a full dot
+            cv2.circle(frame, (index_finger_x, index_finger_y), 5, (0, 255, 0), -1) # -1 parameter for a full dot
