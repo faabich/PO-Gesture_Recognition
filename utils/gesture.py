@@ -23,21 +23,38 @@ class Gesture:
     def click_mouse(self, landmarks, frame):
         # Process each hand's landmarks
         for hand_idx, hand_landmarks in enumerate(landmarks):
-            x1, y1 = hand_landmarks[1][1], hand_landmarks[1][2]
-            x2, y2 = hand_landmarks[2][1], hand_landmarks[2][2]
+            # hand_landmarks: [[[0, x, y], [0, x, y], [12, x, y], [20, x, y]]]
+            wrist_x, wrist_y = hand_landmarks[0][1], hand_landmarks[0][2]
+            index_x, index_y = hand_landmarks[1][1], hand_landmarks[1][2]
+            midfing_x, midfing_y = hand_landmarks[2][1], hand_landmarks[2][2]
+            pinky_x, pinky_y = hand_landmarks[3][1], hand_landmarks[3][2]
 
             # Calculatte length between index and thumb
-            length = math.hypot(x2 - x1, y2 - y1)
+            wristindex_length = math.hypot(wrist_x - index_x, wrist_y - index_y)
+            wristmidfing_length = math.hypot(wrist_x - midfing_x, wrist_y - midfing_y)
+            wristpinky_length = math.hypot(wrist_x - pinky_x, wrist_y - pinky_y)
 
-            # print(length)
+            # print(f"{wristpinky_length} | {wristindex_length} | {wristmidfing_length}")
 
             # Dots and lines on hands
-            cv2.circle(frame, (x1, y1), 5, (255, 0, 255), cv2.FILLED)
-            cv2.circle(frame, (x2, y2), 5, (255, 0, 255), cv2.FILLED)
-            cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 255), 3)
+            cv2.circle(frame, (index_x, index_y), 5, (255, 0, 255), cv2.FILLED)
+            cv2.circle(frame, (midfing_x, midfing_y), 5, (255, 0, 255), cv2.FILLED)
+            cv2.circle(frame, (pinky_x, pinky_y), 5, (255, 0, 255), cv2.FILLED)
+            cv2.line(frame, (wrist_x, wrist_y), (index_x, index_y), (255, 0, 255), 3)
+            cv2.line(frame, (wrist_x, wrist_y), (midfing_x, midfing_y), (255, 0, 255), 3)
+            cv2.line(frame, (wrist_x, wrist_y), (pinky_x, pinky_y), (255, 0, 255), 3)
 
-            # click detection
-            if length < 30 and not self.clicking:
+            # Index-thumb detection
+            # if thumbindex_length < 30 and not self.clicking:
+            #     print("Clicked")
+            #     pyautogui.mouseDown()
+            #     self.clicking = True
+            # elif self.clicking:
+            #     pyautogui.mouseUp()
+            #     self.clicking = False
+
+            # Closed hand detection
+            if (wristindex_length < 150 and wristmidfing_length < 150 and wristpinky_length < 150) and not self.clicking:
                 print("Clicked")
                 pyautogui.mouseDown()
                 self.clicking = True
@@ -49,20 +66,20 @@ class Gesture:
         current_time = time.time()
         for hand_idx, hand_landmarks in enumerate(landmarks):
             # get the index finger reference
-            index_finger_x, index_finger_y = hand_landmarks[0][1], hand_landmarks[0][2]
+            wrist_x, wrist_y = hand_landmarks[0][1], hand_landmarks[0][2]
 
-            # Normalize coordinates (0-1)
-            norm_x = index_finger_x / camera_width
-            norm_y = index_finger_y / camera_height
+            # Get scaling factor
+            factor_x = self.screen_width / camera_width
+            factor_y = self.screen_height / camera_height
 
             # convert to screen x and y coordinates
-            screen_x = int(norm_x * self.screen_width)
-            screen_y = int(norm_y * self.screen_height)
+            screen_x = int(wrist_x * factor_x)
+            screen_y = int(wrist_y * factor_y)
 
             # move the mouse around
-            if current_time - self.previous_time > 0.001:  # 1ms delay
+            if current_time - self.previous_time > 0.008:  # 1ms delay
                 pyautogui.moveTo(screen_x, screen_y)
                 self.previous_time = current_time
 
             # draw the circle
-            cv2.circle(frame, (index_finger_x, index_finger_y), 5, (0, 255, 0), -1) # -1 parameter for a full dot
+            cv2.circle(frame, (wrist_x, wrist_y), 5, (0, 255, 0), -1) # -1 parameter for a full dot

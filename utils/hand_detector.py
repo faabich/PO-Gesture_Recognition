@@ -23,7 +23,7 @@ class HandDetector:
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # mediapipe needs RGB
         results = self.hands.process(frame)
         all_hands_landmarks = []  # List to store landmarks of all hands
-        landmarks_ids = [0, 4, 8, 12]   # Filter list of fingers needed
+        landmarks_ids = [0, 8, 12, 20]   # Filter list of fingers needed
 
         if results.multi_hand_landmarks:
             # Get the number of hands detected (up to max_hands)

@@ -40,7 +40,7 @@ while True:
 
         # Show frame
         cv2.imshow("capture image", frame)
-        if cv2.waitKey(20) & 0xFF == ord('q'):
+        if cv2.waitKey(10) & 0xFF == ord('q'):
             break
 
 cap.release()
