@@ -66,7 +66,7 @@ class Gesture:
         current_time = time.time()
         for hand_idx, hand_landmarks in enumerate(landmarks):
             # get the index finger reference
-            wrist_x, wrist_y = hand_landmarks[0][1], hand_landmarks[0][2]
+            wrist_x, wrist_y = hand_landmarks[0][1] + 100, hand_landmarks[0][2] - 100   # + 100 and - 100 for centering position
 
             # Claude IA movements smoothing
             # Add a buffer zone (e.g., only use the middle 80% of the camera frame)
@@ -100,4 +100,4 @@ class Gesture:
                 self.previous_time = current_time
 
             # draw the circle
-            cv2.circle(frame, (wrist_x, wrist_y), 5, (0, 255, 0), -1) # -1 parameter for a full dot
+            cv2.circle(frame, (wrist_x - 100, wrist_y + 100), 5, (0, 255, 0), -1) # -1 parameter for a full dot
