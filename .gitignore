@@ -1,11 +1,12 @@
 # Byte-compiled / optimized / DLL files
+# PyCharm IDE files
 __pycache__/
 *.py[cod]
 *$py.class
-
-
-# PyCharm IDE files
+*.pyc
 .idea/
+
+
 
 # C extensions
 *.so
