@@ -15,6 +15,7 @@ import pyautogui
 class Gesture:
     def __init__(self):
         self.previous_time = 0
+        self.clicking = False  # state of the clic to avoid clic repetitions
 
         # screen size parameters
         self.screen_width, self.screen_height = pyautogui.size()
@@ -28,7 +29,7 @@ class Gesture:
             # Calculatte length between index and thumb
             length = math.hypot(x2 - x1, y2 - y1)
 
-            print(length)
+            # print(length)
 
             # Dots and lines on hands
             cv2.circle(frame, (x1, y1), 5, (255, 0, 255), cv2.FILLED)
@@ -36,15 +37,13 @@ class Gesture:
             cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 255), 3)
 
             # click detection
-            if length < 30:
-                if not Gesture.clicking:
-                    pyautogui.mouseDown()
-                    Gesture.clicking = True
-
-            else:
-                if Gesture.clicking:
-                    pyautogui.mouseUp()
-                    Gesture.clicking = False
+            if length < 30 and not self.clicking:
+                print("Clicked")
+                pyautogui.mouseDown()
+                self.clicking = True
+            elif self.clicking:
+                pyautogui.mouseUp()
+                self.clicking = False
 
     def move_mouse(self, landmarks, frame, camera_width, camera_height):
         current_time = time.time()
