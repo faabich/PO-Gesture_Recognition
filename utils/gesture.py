@@ -9,8 +9,7 @@ Description:  Multiple gesture recognition
 import cv2
 import math
 import time
-import pyautogui
-
+import ctypes
 
 class Gesture:
     def __init__(self):
@@ -18,12 +17,13 @@ class Gesture:
         self.clicking = False  # state of the clic to avoid clic repetitions
 
         # screen size parameters
-        self.screen_width, self.screen_height = pyautogui.size()
+        user32 = ctypes.windll.user32
+        self.screen_width = user32.GetSystemMetrics(0)  # SM_CXSCREEN constant
+        self.screen_height = user32.GetSystemMetrics(1)  # SM_CYSCREEN constant
 
     def click_mouse(self, landmarks, frame):
         # Process each hand's landmarks
         for hand_idx, hand_landmarks in enumerate(landmarks):
-            # hand_landmarks: [[[0, x, y], [0, x, y], [12, x, y], [20, x, y]]]
             wrist_x, wrist_y = hand_landmarks[0][1], hand_landmarks[0][2]
             index_x, index_y = hand_landmarks[1][1], hand_landmarks[1][2]
             midfing_x, midfing_y = hand_landmarks[2][1], hand_landmarks[2][2]
@@ -56,10 +56,10 @@ class Gesture:
             # Closed hand detection
             if (wristindex_length < 150 and wristmidfing_length < 150 and wristpinky_length < 150) and not self.clicking:
                 print("Clicked")
-                pyautogui.mouseDown()
+                ctypes.windll.user32.mouse_event(2, 0, 0, 0, 0)  # Left down
                 self.clicking = True
-            elif self.clicking:
-                pyautogui.mouseUp()
+            else:
+                ctypes.windll.user32.mouse_event(4, 0, 0, 0, 0)  # Left up
                 self.clicking = False
 
     def move_mouse(self, landmarks, frame, camera_width, camera_height):
@@ -68,17 +68,35 @@ class Gesture:
             # get the index finger reference
             wrist_x, wrist_y = hand_landmarks[0][1], hand_landmarks[0][2]
 
-            # Get scaling factor
-            factor_x = self.screen_width / camera_width
-            factor_y = self.screen_height / camera_height
+            # Claude IA movements smoothing
+            # Add a buffer zone (e.g., only use the middle 80% of the camera frame)
+            # This gives you more precision and avoids edge detection issues
+            buffer_x = camera_width * 0.2
+            buffer_y = camera_height * 0.2
 
-            # convert to screen x and y coordinates
-            screen_x = int(wrist_x * factor_x)
-            screen_y = int(wrist_y * factor_y)
+            # Normalize coordinates to 0-1 range within the usable area
+            norm_x = max(0, min(1, (wrist_x - buffer_x) / (camera_width - 2 * buffer_x)))
+            norm_y = max(0, min(1, (wrist_y - buffer_y) / (camera_height - 2 * buffer_y)))
+
+            # Map to screen coordinates
+            screen_x = int(norm_x * self.screen_width)
+            screen_y = int(norm_y * self.screen_height)
+
+            # Add smoothing to prevent jitter (optional)
+            if not hasattr(self, 'last_x'):
+                self.last_x, self.last_y = screen_x, screen_y
+
+            # Apply some smoothing (e.g., 20% current position, 80% previous position)
+            smoothing = 0.8
+            smooth_x = int(smoothing * self.last_x + (1 - smoothing) * screen_x)
+            smooth_y = int(smoothing * self.last_y + (1 - smoothing) * screen_y)
+
+            # Update last position
+            self.last_x, self.last_y = smooth_x, smooth_y
 
             # move the mouse around
-            if current_time - self.previous_time > 0.008:  # 1ms delay
-                pyautogui.moveTo(screen_x, screen_y)
+            if current_time - self.previous_time > 0.008:  # 8ms delay
+                ctypes.windll.user32.SetCursorPos(int(smooth_x), int(smooth_y))
                 self.previous_time = current_time
 
             # draw the circle

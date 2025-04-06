@@ -34,7 +34,7 @@ while True:
         # Get landmarks
         landmarks = hand_detector.findHandsLandMarks(frame, draw=False)
 
-        # Select gesture
+        # Select gestures
         gestures.move_mouse(landmarks, frame, CAMERA_WIDTH, CAMERA_HEIGHT)
         gestures.click_mouse(landmarks, frame)
 
