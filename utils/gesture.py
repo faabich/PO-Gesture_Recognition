@@ -23,8 +23,8 @@ class Gesture:
     def click_mouse(self, landmarks, frame):
         # Process each hand's landmarks
         for hand_idx, hand_landmarks in enumerate(landmarks):
-            x1, y1 = hand_landmarks[4][1], hand_landmarks[4][2]
-            x2, y2 = hand_landmarks[8][1], hand_landmarks[8][2]
+            x1, y1 = hand_landmarks[1][1], hand_landmarks[1][2]
+            x2, y2 = hand_landmarks[2][1], hand_landmarks[2][2]
 
             # Calculatte length between index and thumb
             length = math.hypot(x2 - x1, y2 - y1)

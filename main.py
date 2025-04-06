@@ -32,7 +32,7 @@ while True:
         frame = cv2.flip(frame, 1)
 
         # Get landmarks
-        landmarks = hand_detector.findHandsLandMarks(frame, draw=True)
+        landmarks = hand_detector.findHandsLandMarks(frame, draw=False)
 
         # Select gesture
         gestures.move_mouse(landmarks, frame, CAMERA_WIDTH, CAMERA_HEIGHT)
