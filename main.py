@@ -20,12 +20,13 @@ CAMERA_HEIGHT = 900
 # Camera initialisation
 cap = VideoCamera(width=CAMERA_WIDTH, height=CAMERA_HEIGHT)
 
+# Create hand detector object for landmarks
 hand_detector = HandDetector()
 
+# Create gesture object for further calls
 gestures = Gesture()
 
 while True:
-    current_time = time.time()
     success, frame = cap.read()
     if success:
         # flip for mirror effect
