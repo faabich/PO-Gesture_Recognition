@@ -6,42 +6,19 @@ Version:      0.1
 Description:  Entry point for the HandGesture application
 """
 
-from utils.hand_detector import HandDetector
-from utils.camera import VideoCamera
-from utils.gesture import Gesture
-import cv2
+import customtkinter
+import utils.HM_window
 
+class App(customtkinter.CTk):
+    def __init__(self):
+        super().__init__()
+        self.geometry("400x150")
 
-# Constants variables
-CAMERA_WIDTH = 1600
-CAMERA_HEIGHT = 900
+        self.button = customtkinter.CTkButton(self, text="Launch main window", command=self.start_HM_window)
+        self.button.pack(padx=20, pady=20)
 
-# Camera initialisation
-cap = VideoCamera(CAMERA_WIDTH, CAMERA_HEIGHT)
+    def start_HM_window(self):
+        new_window = HM_window.HM_window(self)
 
-# Create hand detector object for landmarks
-hand_detector = HandDetector()
-
-# Create gesture object for further calls
-gestures = Gesture()
-
-while True:
-    success, frame = cap.read()
-    if success:
-        # flip for mirror effect
-        frame = cv2.flip(frame, 1)
-
-        # Get landmarks
-        landmarks = hand_detector.findHandsLandMarks(frame, draw=False)
-
-        # Select gestures
-        gestures.move_mouse(landmarks, frame, CAMERA_WIDTH, CAMERA_HEIGHT)
-        gestures.click_mouse(landmarks, frame)
-
-        # Show frame
-        cv2.imshow("capture image", frame)
-        if cv2.waitKey(10) & 0xFF == ord('q'):
-            break
-
-cap.release()
-cv2.destroyAllWindows()
+app = App()
+app.mainloop()
