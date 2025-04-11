@@ -32,56 +32,60 @@ class Gesture:
         # Process each hand's landmarks
         for hand_idx, hand_landmarks in enumerate(landmarks):
             # Solution 1
-            thumb_x, thumb_y = hand_landmarks[1][1], hand_landmarks[1][2]
-            index_x, index_y = hand_landmarks[2][1], hand_landmarks[2][2]
+            # thumb_x, thumb_y = hand_landmarks[1][1], hand_landmarks[1][2]
+            # index_x, index_y = hand_landmarks[2][1], hand_landmarks[2][2]
 
             # Solution 2
-            # wrist_x, wrist_y = hand_landmarks[0][1], hand_landmarks[0][2]
-            # midfing_x, midfing_y = hand_landmarks[3][1], hand_landmarks[3][2]
-            # pinky_x, pinky_y = hand_landmarks[4][1], hand_landmarks[4][2]
+            wrist_x, wrist_y = hand_landmarks[0][1], hand_landmarks[0][2]
+            index_x, index_y = hand_landmarks[2][1], hand_landmarks[2][2]
+            midfing_x, midfing_y = hand_landmarks[3][1], hand_landmarks[3][2]
+            pinky_x, pinky_y = hand_landmarks[4][1], hand_landmarks[4][2]
 
             # Calculatte length between index and thumb
             # Solution 1
-            thumbindex_length = math.hypot(thumb_x - index_x, thumb_y - index_y)
+            # thumbindex_length = math.hypot(thumb_x - index_x, thumb_y - index_y)
 
             # Solution 2
-            # wristindex_length = math.hypot(wrist_x - index_x, wrist_y - index_y)
-            # wristmidfing_length = math.hypot(wrist_x - midfing_x, wrist_y - midfing_y)
-            # wristpinky_length = math.hypot(wrist_x - pinky_x, wrist_y - pinky_y)
+            wristindex_length = math.hypot(wrist_x - index_x, wrist_y - index_y)
+            wristmidfing_length = math.hypot(wrist_x - midfing_x, wrist_y - midfing_y)
+            wristpinky_length = math.hypot(wrist_x - pinky_x, wrist_y - pinky_y)
 
             # print(f"{wristpinky_length} | {wristindex_length} | {wristmidfing_length}")
 
             # Dots and lines on hands
             # Solution 1
-            cv2.circle(frame, (index_x, index_y), 5, (255, 0, 255), cv2.FILLED)
-            cv2.circle(frame, (thumb_x, thumb_y), 5, (255, 0, 255), cv2.FILLED)
-            cv2.line(frame, (thumb_x, thumb_y), (index_x, index_y), (255, 0, 255), 3)
+            # cv2.circle(frame, (index_x, index_y), 5, (255, 0, 255), cv2.FILLED)
+            # cv2.circle(frame, (thumb_x, thumb_y), 5, (255, 0, 255), cv2.FILLED)
+            # cv2.line(frame, (thumb_x, thumb_y), (index_x, index_y), (255, 0, 255), 3)
 
             # Solution 2
-            # cv2.circle(frame, (index_x, index_y), 5, (255, 0, 255), cv2.FILLED)
-            # cv2.circle(frame, (midfing_x, midfing_y), 5, (255, 0, 255), cv2.FILLED)
-            # cv2.circle(frame, (pinky_x, pinky_y), 5, (255, 0, 255), cv2.FILLED)
-            # cv2.line(frame, (wrist_x, wrist_y), (index_x, index_y), (255, 0, 255), 3)
-            # cv2.line(frame, (wrist_x, wrist_y), (midfing_x, midfing_y), (255, 0, 255), 3)
-            # cv2.line(frame, (wrist_x, wrist_y), (pinky_x, pinky_y), (255, 0, 255), 3)
+            cv2.circle(frame, (index_x, index_y), 5, (255, 0, 255), cv2.FILLED)
+            cv2.circle(frame, (midfing_x, midfing_y), 5, (255, 0, 255), cv2.FILLED)
+            cv2.circle(frame, (pinky_x, pinky_y), 5, (255, 0, 255), cv2.FILLED)
+            cv2.line(frame, (wrist_x, wrist_y), (index_x, index_y), (255, 0, 255), 3)
+            cv2.line(frame, (wrist_x, wrist_y), (midfing_x, midfing_y), (255, 0, 255), 3)
+            cv2.line(frame, (wrist_x, wrist_y), (pinky_x, pinky_y), (255, 0, 255), 3)
 
             # Index-thumb detection
-            if thumbindex_length < 30 and not self.clicking:
-                print("Clicked")
-                ctypes.windll.user32.mouse_event(2, 0, 0, 0, 0)  # Left down
-                self.clicking = True
-            elif self.clicking:
-                ctypes.windll.user32.mouse_event(4, 0, 0, 0, 0)  # Left up
-                self.clicking = False
-
-            # # Closed hand detection
-            # if (wristindex_length < 150 and wristmidfing_length < 150 and wristpinky_length < 150) and not self.clicking:
+            # # Solution 1
+            # if thumbindex_length < 30 and not self.clicking:
             #     print("Clicked")
             #     ctypes.windll.user32.mouse_event(2, 0, 0, 0, 0)  # Left down
             #     self.clicking = True
-            # else:
+            # elif self.clicking:
             #     ctypes.windll.user32.mouse_event(4, 0, 0, 0, 0)  # Left up
             #     self.clicking = False
+
+            # Closed hand detection
+            # Solution 2
+            if (wristindex_length < 150 and wristmidfing_length < 150 and wristpinky_length < 150) and not self.clicking:
+                print("Clicked")
+                ctypes.windll.user32.mouse_event(2, 0, 0, 0, 0)  # Left down
+                self.clicking = True
+            elif wristindex_length > 150 and wristmidfing_length > 150 and wristpinky_length > 150 and self.clicking:
+                ctypes.windll.user32.mouse_event(4, 0, 0, 0, 0)  # Left up
+                print("Un-Clicked")
+                self.clicking = False
 
     def move_mouse(self, landmarks, frame, camera_width, camera_height):
         current_time = time.time()
