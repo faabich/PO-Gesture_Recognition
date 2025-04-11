@@ -77,6 +77,7 @@ class Gesture:
                 self.clicking = True
             elif wristindex_length > 150 and wristmidfing_length > 150 and wristpinky_length > 150 and self.clicking:
                 ctypes.windll.user32.mouse_event(4, 0, 0, 0, 0)  # Left up
+                print("Un-Clicked")
                 self.clicking = False
 
     def move_mouse(self, landmarks, frame, camera_width, camera_height):
