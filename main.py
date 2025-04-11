@@ -34,10 +34,12 @@ while True:
         # Get landmarks
         landmarks = hand_detector.findHandsLandMarks(frame, draw=False)
 
+
+
         # Select gestures
         gestures.move_mouse(landmarks, frame, CAMERA_WIDTH, CAMERA_HEIGHT)
-        gestures.click_mouse(landmarks, frame)
-
+        # gestures.click_mouse(landmarks, frame)
+        gestures.driving_wheel(landmarks, hand_detector.original_image)
         # Show frame
         cv2.imshow("capture image", frame)
         if cv2.waitKey(10) & 0xFF == ord('q'):

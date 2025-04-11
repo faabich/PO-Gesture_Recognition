@@ -16,10 +16,11 @@ class HandDetector:
         self.mp_drawing = mp.solutions.drawing_utils
         self.hands = self.mp_hands.Hands(max_num_hands=max_num_hands, min_detection_confidence=min_detection_confidence,
                                    min_tracking_confidence=min_tracking_confidence)
+        self.original_image = ""
 
 
     def findHandsLandMarks(self, frame, max_hands=1, draw=False):
-        original_image = frame
+        self.original_image = frame
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # mediapipe needs RGB
         results = self.hands.process(frame)
         all_hands_landmarks = []  # List to store landmarks of all hands
@@ -37,7 +38,7 @@ class HandDetector:
                 # Process landmarks for this hand
                 for id, landMark in enumerate(hand.landmark):
                     if id in landmarks_ids:
-                        imgH, imgW, imgC = original_image.shape
+                        imgH, imgW, imgC = self.original_image.shape
                         xPos, yPos = int(landMark.x * imgW), int(landMark.y * imgH)
                         handLandmarks.append([id, xPos, yPos])
 
@@ -46,6 +47,6 @@ class HandDetector:
 
                 # Draw landmarks if requested
                 if draw:
-                    self.mp_drawing.draw_landmarks(original_image, hand, self.mp_hands.HAND_CONNECTIONS)
+                    self.mp_drawing.draw_landmarks(self.original_image, hand, self.mp_hands.HAND_CONNECTIONS)
 
         return all_hands_landmarks
