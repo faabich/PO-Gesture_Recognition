@@ -12,37 +12,28 @@ from utils.gesture import Gesture
 import cv2
 
 class HM_window:
+    def __init__(self, width, height):
+        self.CAMERA_WIDTH = width
+        self.CAMERA_HEIGHT = height
+        self.cap = VideoCamera(self.CAMERA_WIDTH, self.CAMERA_HEIGHT)
+        self.hand_detector = HandDetector()
+        self.gestures = Gesture()
+        self.running = True
 
-    # Constants variables
-    CAMERA_WIDTH = 1600
-    CAMERA_HEIGHT = 900
+    def run(self):
+        while self.running:
+            success, frame = self.cap.read()
+            if success:
+                frame = cv2.flip(frame, 1)
+                landmarks = self.hand_detector.findHandsLandMarks(frame, draw=False)
+                self.gestures.move_mouse(landmarks, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT)
+                self.gestures.click_mouse(landmarks, frame)
+                cv2.imshow("capture image", frame)
+                if cv2.waitKey(10) & 0xFF == ord('q'):
+                    self.stop()
 
-    # Camera initialisation
-    cap = VideoCamera(CAMERA_WIDTH, CAMERA_HEIGHT)
+        self.cap.release()
+        cv2.destroyAllWindows()
 
-    # Create hand detector object for landmarks
-    hand_detector = HandDetector()
-
-    # Create gesture object for further calls
-    gestures = Gesture()
-
-    while True:
-        success, frame = cap.read()
-        if success:
-            # flip for mirror effect
-            frame = cv2.flip(frame, 1)
-
-            # Get landmarks
-            landmarks = hand_detector.findHandsLandMarks(frame, draw=False)
-
-            # Select gestures
-            gestures.move_mouse(landmarks, frame, CAMERA_WIDTH, CAMERA_HEIGHT)
-            gestures.click_mouse(landmarks, frame)
-
-            # Show frame
-            cv2.imshow("capture image", frame)
-            if cv2.waitKey(10) & 0xFF == ord('q'):
-                break
-
-    cap.release()
-    cv2.destroyAllWindows()
+    def stop(self):
+        self.running = False
