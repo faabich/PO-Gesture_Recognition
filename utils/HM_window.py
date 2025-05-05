@@ -21,9 +21,11 @@ class HM_window:
         self.running = True
 
     def run(self):
+        print("HM_window started")
         while self.running:
             success, frame = self.cap.read()
             if success:
+                print("HM_window running")
                 frame = cv2.flip(frame, 1)
                 landmarks = self.hand_detector.findHandsLandMarks(frame, draw=False)
                 self.gestures.move_mouse(landmarks, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT)
@@ -34,6 +36,7 @@ class HM_window:
 
         self.cap.release()
         cv2.destroyAllWindows()
+        print("HM_window stopped")
 
     def stop(self):
         self.running = False
