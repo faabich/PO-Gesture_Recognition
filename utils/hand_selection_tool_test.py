@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from PIL import Image, ImageTk
 import tkinter as tk
+from pathlib import Path
 
 class HandSelectionApp(ctk.CTk):
     def __init__(self):
@@ -9,7 +10,7 @@ class HandSelectionApp(ctk.CTk):
         self.title("Hand Point Selection")
         self.geometry("400x400")
 
-        self.hand_image = Image.open("hand.png")  # Replace with your hand image path
+        self.hand_image = Image.open(Path(__file__).parent.parent / "img" / "hand.png") # IA: how to load an image from a path
         self.hand_photo = ImageTk.PhotoImage(self.hand_image)
 
         self.canvas = ctk.CTkCanvas(self, width=self.hand_image.width, height=self.hand_image.height)
