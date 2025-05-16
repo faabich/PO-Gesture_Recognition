@@ -15,6 +15,13 @@ import numpy as np
 import utils.touch as touch
 
 
+user32 = ctypes.windll.user32
+keybd_event = ctypes.windll.user32.keybd_event
+
+
+def driving_wheel_unpress_keys(key_code):
+    keybd_event(key_code, 0, 2, 0)
+
 class Gesture:
     def __init__(self):
         # Configuration ctypes pour Windows
@@ -304,5 +311,33 @@ class Gesture:
                     ctypes.windll.user32.SetCursorPos(int(screen_x), int(screen_y))
                     self.previous_time = current_time
 
-                # draw the circle
-                cv2.circle(frame, (wrist_x - 100, wrist_y + 100), 5, (0, 255, 0), -1)  # -1 parameter for a full dot
+            # draw the circle
+            cv2.circle(frame, (wrist_x - 100, wrist_y + 100), 5, (0, 255, 0), -1) # -1 parameter for a full dot
+
+    def driving_wheel(self, landmarks, original_image):
+        # Logic to simulate the keypress based on the Y position of the hand
+        # if len(landmarks) > 0:
+        for hand_idx, hand_landmarks in enumerate(landmarks):
+            # We use the y position of the landmark 8 (index finger tip)
+            index_y_pos = hand_landmarks[2][2]  # id=8 is the index finger tip
+            imgH, imgW, imgC = original_image.shape
+            mid_y_up = imgH // 2 + 50
+            mid_y_down = imgH // 2 - 50
+
+            # Determine if the Y position is above or below the middle and simulate keypress
+            # if index_y_pos < mid_y:
+            #     driving_wheel_press_keys(KEY_A)
+            #     print("A")
+            #     if index_y_pos == mid_y:
+            if index_y_pos < mid_y_down:
+                keybd_event(0x1E, 0, 0, 0)
+                print("A")
+            elif index_y_pos > mid_y_up:
+                keybd_event(0x20, 0, 0, 0)
+                print("D")
+            elif index_y_pos > mid_y_down and index_y_pos < mid_y_up:
+                print("Zone grise")
+                keybd_event(0x1E, 0, 2, 0)
+                keybd_event(0x20, 0, 2, 0)
+
+

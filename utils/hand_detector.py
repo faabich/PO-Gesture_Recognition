@@ -16,6 +16,7 @@ class HandDetector:
         self.mp_drawing = mp.solutions.drawing_utils
         self.hands = self.mp_hands.Hands(max_num_hands=max_num_hands, min_detection_confidence=min_detection_confidence,
                                    min_tracking_confidence=min_tracking_confidence)
+        self.original_image = ""
 
 
     def get_hand_landmarks(self, frame):
