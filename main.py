@@ -6,44 +6,99 @@ Version:      0.1
 Description:  Entry point for the HandGesture application
 """
 
-from utils.hand_detector import HandDetector
-from utils.camera import VideoCamera
-from utils.gesture import Gesture
+import customtkinter as ctk
+import utils.HM_window as HM_window
+import utils.float_spinbox as sb
+from utils.custom_demo_browser import open_browser
+import threading
 import cv2
 
+from utils import custom_demo_browser
 
-# Constants variables
-CAMERA_WIDTH = 1600
-CAMERA_HEIGHT = 900
+width = 425
+height = 225
 
-# Camera initialisation
-cap = VideoCamera(CAMERA_WIDTH, CAMERA_HEIGHT)
+# Default camera resolution
+cam_width = 1600
+cam_height = 900
 
-# Create hand detector object for landmarks
-hand_detector = HandDetector()
+app = ctk.CTk()
+app.title("Hand Gesture Recognition Configurator")
 
-# Create gesture object for further calls
-gestures = Gesture()
+# Create a new frame for custom options
+custom_options_frame = ctk.CTkFrame(app)
+custom_options_frame.grid(row=4, column=0, columnspan=3, padx=10, pady=10)
+custom_options_frame.forget() # Hide the frame by default
 
-while True:
-    success, frame = cap.read()
-    if success:
-        # flip for mirror effect
-        frame = cv2.flip(frame, 1)
+custom_options_frame.grid_columnconfigure(0, weight=1)
+custom_options_frame.grid_columnconfigure(1, weight=1)
+custom_options_frame.grid_columnconfigure(2, weight=1)
 
-        # Get landmarks
-        landmarks = hand_detector.findHandsLandMarks(frame, draw=False)
+def start_HM_window(HM_width, HM_height):
+    import cv2
+    try:
+        cv2.destroyAllWindows()  # Close any existing OpenCV windows
+        cv2.startWindowThread() # Start a new thread to launch the OpenCV window in
+        hm_window = HM_window.HM_window(HM_width, HM_height)
+        hm_window.run()
+        print("hello")
+    except Exception as e:
+        print(f"Error in HM_window thread: {e}")
 
+def checkbox_event():
+    pass
 
+def optionmenu_callback(choice):
+    print("optionmenu dropdown clicked:", choice)
 
-        # Select gestures
-        gestures.move_mouse(landmarks, frame, CAMERA_WIDTH, CAMERA_HEIGHT)
-        # gestures.click_mouse(landmarks, frame)
-        gestures.driving_wheel(landmarks, hand_detector.original_image)
-        # Show frame
-        cv2.imshow("capture image", frame)
-        if cv2.waitKey(10) & 0xFF == ord('q'):
-            break
+def open_hand_selection_utility():
+    pass
 
-cap.release()
-cv2.destroyAllWindows()
+def checkbox_event_show_more_options():
+    if custom_options_checkbox_var.get()=="on":
+        custom_options_frame.grid(row=4, column=0, columnspan=3, padx=10, pady=10, sticky="nsew") # Show the additional options
+        app.geometry("425x600")
+    else:
+        custom_options_frame.grid_forget() # Hide the additional options
+        app.geometry("425x225")
+
+description = ctk.CTkLabel(app, text="Hand Gesture Recognition Demo Configurator Utility:\nTo quickly start a common demo, you can browse the\nready-to-use programs by clicking on the button below.", font=("Arial", 16))
+description.grid(row=0, column=0, columnspan=3, padx=10, pady=10)
+
+demo_browser_button = ctk.CTkButton(app, text="Browse ready-to-use programs", command=lambda: open_browser(main_frame=app, width=800, height=600))
+demo_browser_button.grid(row=1, column=1, padx=10, pady=10)
+
+bottom_description = ctk.CTkLabel(app, text="To start a custom demo, you can set the camera resolution\nand the main window size below.", font=("Arial", 16))
+bottom_description.grid(row=2, column=0, columnspan=3, padx=10, pady=10)
+
+custom_options_checkbox_var = ctk.StringVar(value="off")
+custom_options_checkbox = ctk.CTkCheckBox(app, text="Use custom options",variable=custom_options_checkbox_var, onvalue="on", offvalue="off", command=checkbox_event_show_more_options)
+custom_options_checkbox.grid(row=3, column=1, columnspan=1, padx=10, pady=10)
+
+technology_label = ctk.CTkLabel(custom_options_frame, text="Technology:")
+technology_label.grid(row=0, column=1, padx=10, pady=10, sticky="w")
+
+# Choosing which 'technology' to use (mouse-like, touchscreen or multiple-input)
+optionmenu_var = ctk.StringVar(value="choose a technology")
+optionmenu = ctk.CTkOptionMenu(custom_options_frame,values=["mouse-like", "touchscreen", "multiple-input"], command=optionmenu_callback, variable=optionmenu_var)
+optionmenu.grid(row=0, column=2, padx=10, pady=10, sticky="w")
+
+num_hands_label = ctk.CTkLabel(custom_options_frame,text="Number of hands to track")
+num_hands_label.grid(row=1, column=1, padx=10, pady=10, sticky="w")
+
+spinbox = sb.FloatSpinbox(custom_options_frame, width=140, step_size=1)
+spinbox.grid(row=1, column=2, padx=10, pady=10, sticky="w")
+
+check_var = ctk.StringVar(value="off")
+# custom_res_cb = ctk.CTkCheckBox(app, text="Use a custom resolution", command=checkbox_event, variable=check_var, onvalue="on", offvalue="off")
+
+track_points_label = ctk.CTkLabel(custom_options_frame, text="Track hand points:")
+track_points_label.grid(row=2, column=1, padx=10, pady=10, sticky="w")
+
+open_hand_points_selection_utility_button = ctk.CTkButton(custom_options_frame, text="Open hand points selection utility", command=open_hand_selection_utility)
+
+launch_button = ctk.CTkButton(custom_options_frame, text="Launch main window", command=lambda: start_HM_window(cam_width, cam_height))
+launch_button.grid(row=3, column=1, columnspan=2, padx=10, pady=10)
+
+app.geometry(f"{width}x{height}")
+app.mainloop()
