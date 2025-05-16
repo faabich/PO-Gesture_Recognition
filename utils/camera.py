@@ -6,7 +6,6 @@ Version:      0.1
 Description:  Camera creation with opencv
 """
 
-
 import cv2
 
 

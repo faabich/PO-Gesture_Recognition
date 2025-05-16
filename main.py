@@ -11,7 +11,6 @@ from utils.camera import VideoCamera
 from utils.gesture import Gesture
 import cv2
 
-
 # Constants variables
 CAMERA_WIDTH = 1600
 CAMERA_HEIGHT = 900
@@ -24,24 +23,26 @@ hand_detector = HandDetector()
 
 # Create gesture object for further calls
 gestures = Gesture()
+if not gestures.make_click_through():
+    print("Impossible de configurer le click-through, utilisation de méthode alternative.")
+else:
+    while True:
+        success, frame = cap.read()
+        if success:
+            # flip for mirror effect
+            frame = cv2.flip(frame, 1)
 
-while True:
-    success, frame = cap.read()
-    if success:
-        # flip for mirror effect
-        frame = cv2.flip(frame, 1)
+            # Get landmarks
+            landmarks, mp_drawing, mp_hands = hand_detector.get_hand_landmarks(frame)
 
-        # Get landmarks
-        landmarks = hand_detector.findHandsLandMarks(frame, draw=False)
+            # Select gestures
+            # gestures.move_mouse(landmarks, frame, CAMERA_WIDTH, CAMERA_HEIGHT)
+            # gestures.click_mouse(landmarks, frame)
+            root = gestures.touchscreen_mode(landmarks, mp_drawing, mp_hands, frame, False)
 
-        # Select gestures
-        gestures.move_mouse(landmarks, frame, CAMERA_WIDTH, CAMERA_HEIGHT)
-        gestures.click_mouse(landmarks, frame)
-
-        # Show frame
-        cv2.imshow("capture image", frame)
-        if cv2.waitKey(10) & 0xFF == ord('q'):
-            break
-
+            if cv2.waitKey(5) & 0xFF == ord('q'):
+                root.destroy()
+                break
+# Nettoyage
 cap.release()
 cv2.destroyAllWindows()
