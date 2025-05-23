@@ -12,7 +12,7 @@ import utils.float_spinbox as sb
 from utils.custom_demo_browser import open_browser
 import threading
 import cv2
-import traceback
+import traceback # AI generated (threading optimization)
 
 from utils import custom_demo_browser
 
@@ -35,6 +35,7 @@ custom_options_frame.grid_columnconfigure(0, weight=1)
 custom_options_frame.grid_columnconfigure(1, weight=1)
 custom_options_frame.grid_columnconfigure(2, weight=1)
 
+# AI generated (threading optimization)
 def threaded_hm_window_runner(width, height):
     try:
         hm_window = HM_window.HM_window(width, height)
@@ -46,6 +47,7 @@ def threaded_hm_window_runner(width, height):
 
 def start_HM_window(HM_width, HM_height):
     import cv2
+    # AI generated (threading optimization)
     try:
         cv2.destroyAllWindows()  # Close any existing OpenCV windows
         thread = threading.Thread(target=threaded_hm_window_runner, args=(HM_width, HM_height), daemon=True)

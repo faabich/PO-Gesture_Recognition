@@ -29,7 +29,7 @@ class HM_window:
             if not success:
                 print("Failed to read frame from camera.")
             if success:
-                print("HM_window running")
+                # print("HM_window running")
                 frame = cv2.flip(frame, 1)
                 hand_landmarks_results, mp_drawing_utils, mp_hands_solutions = self.hand_detector.get_hand_landmarks(frame)
                 # self.gestures.move_mouse(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT)
