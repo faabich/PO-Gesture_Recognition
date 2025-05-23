@@ -220,8 +220,8 @@ class Gesture:
                 # self.detected_hands.add(hand_id)
 
                 # Dessiner les repères de la main
-                mp_drawing.draw_landmarks(
-                    frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+                # mp_drawing.draw_landmarks(
+                #     frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
                 # Vérifier le geste de clic
                 is_clicking = self.is_fingers_closed(hand_landmarks.landmark)
@@ -297,22 +297,25 @@ class Gesture:
             for idx, hand_landmarks in enumerate(landmarks.multi_hand_landmarks):
                 # get the wrist reference
                 wrist = hand_landmarks.landmark[0]
-                wrist_x, wrist_y = wrist.x + 100, wrist.y - 100  # + 100 and - 100 for centering position
 
-                # Movements without smoothing
+                # Calculate coordinates for cv2.circle
+                frame_height, frame_width, _ = frame.shape
+                circle_center_x = int(wrist.x * frame_width)
+                circle_center_y = int(wrist.y * frame_height)
+
+                # Draw the circle for the current hand
+                cv2.circle(frame, (circle_center_x, circle_center_y), 5, (0, 255, 0), -1)
+
+                # Original mouse movement logic (remains unchanged for now)
+                wrist_x_mouse, wrist_y_mouse = wrist.x + 100, wrist.y - 100  # Using different vars to avoid confusion
                 factor_x = self.SCREEN_WIDTH / camera_width
                 factor_y = self.SCREEN_HEIGHT / camera_height
+                screen_x = wrist_x_mouse * factor_x
+                screen_y = wrist_y_mouse * factor_y
 
-                screen_x = wrist_x * factor_x
-                screen_y = wrist_y * factor_y
-
-                # move the mouse around
                 if current_time - self.previous_time > 0.008:  # 8ms delay
                     ctypes.windll.user32.SetCursorPos(int(screen_x), int(screen_y))
                     self.previous_time = current_time
-
-            # draw the circle
-            cv2.circle(frame, (wrist_x - 100, wrist_y + 100), 5, (0, 255, 0), -1) # -1 parameter for a full dot
 
     def driving_wheel(self, landmarks, original_image):
         # Logic to simulate the keypress based on the Y position of the hand
@@ -339,5 +342,3 @@ class Gesture:
                 print("Zone grise")
                 keybd_event(0x1E, 0, 2, 0)
                 keybd_event(0x20, 0, 2, 0)
-
-

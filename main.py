@@ -12,6 +12,7 @@ import utils.float_spinbox as sb
 from utils.custom_demo_browser import open_browser
 import threading
 import cv2
+import traceback
 
 from utils import custom_demo_browser
 
@@ -34,13 +35,21 @@ custom_options_frame.grid_columnconfigure(0, weight=1)
 custom_options_frame.grid_columnconfigure(1, weight=1)
 custom_options_frame.grid_columnconfigure(2, weight=1)
 
+def threaded_hm_window_runner(width, height):
+    try:
+        hm_window = HM_window.HM_window(width, height)
+        hm_window.run()
+    except Exception as e:
+        print("Error in threaded_hm_window_runner:")
+        print(e)
+        traceback.print_exc()
+
 def start_HM_window(HM_width, HM_height):
     import cv2
     try:
         cv2.destroyAllWindows()  # Close any existing OpenCV windows
-        cv2.startWindowThread() # Start a new thread to launch the OpenCV window in
-        hm_window = HM_window.HM_window(HM_width, HM_height)
-        hm_window.run()
+        thread = threading.Thread(target=threaded_hm_window_runner, args=(HM_width, HM_height), daemon=True)
+        thread.start()
         print("hello")
     except Exception as e:
         print(f"Error in HM_window thread: {e}")

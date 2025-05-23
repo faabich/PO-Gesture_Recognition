@@ -22,14 +22,19 @@ class HM_window:
 
     def run(self):
         print("HM_window started")
+        print("Attempting to read from camera...")
         while self.running:
             success, frame = self.cap.read()
+            print(f"Camera read success: {success}")
+            if not success:
+                print("Failed to read frame from camera.")
             if success:
                 print("HM_window running")
                 frame = cv2.flip(frame, 1)
-                landmarks = self.hand_detector.findHandsLandMarks(frame, draw=False)
-                self.gestures.move_mouse(landmarks, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT)
-                self.gestures.click_mouse(landmarks, frame)
+                hand_landmarks_results, mp_drawing_utils, mp_hands_solutions = self.hand_detector.get_hand_landmarks(frame)
+                # self.gestures.move_mouse(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT)
+                # self.gestures.click_mouse(hand_landmarks_results, frame)
+                self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT, False)
                 cv2.imshow("capture image", frame)
                 if cv2.waitKey(10) & 0xFF == ord('q'):
                     self.stop()
