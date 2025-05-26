@@ -249,7 +249,7 @@ class Gesture:
             self.update_circles(hand_positions)
 
         # Afficher l'image de la caméra
-        cv2.imshow('MediaPipe Hands', frame)
+        # cv2.imshow('MediaPipe Hands', frame)
 
         return self.root
 

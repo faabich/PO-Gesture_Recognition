@@ -20,21 +20,24 @@ class HM_window:
         self.gestures = Gesture()
         self.running = True
 
-    def run(self):
+    def run(self, parameter=None):
         print("HM_window started")
         print("Attempting to read from camera...")
         while self.running:
             success, frame = self.cap.read()
-            print(f"Camera read success: {success}")
+            # print(f"Camera read success: {success}")
             if not success:
                 print("Failed to read frame from camera.")
             if success:
                 # print("HM_window running")
                 frame = cv2.flip(frame, 1)
                 hand_landmarks_results, mp_drawing_utils, mp_hands_solutions = self.hand_detector.get_hand_landmarks(frame)
-                # self.gestures.move_mouse(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT)
-                # self.gestures.click_mouse(hand_landmarks_results, frame)
-                self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT, False)
+                match parameter:
+                    case "earth":
+                        self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT,False)
+                    case "particle love":
+                        self.gestures.move_mouse(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT)
+                        self.gestures.click_mouse(hand_landmarks_results, frame)
                 cv2.imshow("capture image", frame)
                 if cv2.waitKey(10) & 0xFF == ord('q'):
                     self.stop()

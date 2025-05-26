@@ -10,7 +10,11 @@ import customtkinter as ctk
 import webbrowser
 import customtkinter
 import os
+from utils.gesture import *
+from utils.hand_detector import *
 from PIL import Image
+import utils.HM_window as HM_window
+
 
 def add_demo(name, img_path, technology):
     pass
@@ -45,10 +49,23 @@ def open_browser(main_frame, width, height):
 
     def open_earth():
         webbrowser.open('https://earth.google.com/')
-        touchscreen_mode(has_cursor=true)
+        try:
+            hm_window = HM_window.HM_window(width, height)
+            hm_window.run("earth")
+        except Exception as e:
+            print("Error in threaded_hm_window_runner:")
+            print(e)
+            # traceback.print_exc()
 
-    def open_google():
-        webbrowser.open('https://www.google.com/')
+    def open_particle_love():
+        webbrowser.open('https://particle-love.com/')
+        try:
+            hm_window = HM_window.HM_window(width, height)
+            hm_window.run("particle love")
+        except Exception as e:
+            print("Error in threaded_hm_window_runner:")
+            print(e)
+            # traceback.print_exc()
 
     def open_youtube():
         webbrowser.open('https://www.youtube.com/')
@@ -68,9 +85,9 @@ def open_browser(main_frame, width, height):
         size=(200, 200)
     )
 
-    img_google = customtkinter.CTkImage(
-        light_image=Image.open(os.path.join(img_folder, "google.png")),
-        dark_image=Image.open(os.path.join(img_folder, "google.png")),
+    img_particlelove = customtkinter.CTkImage(
+        light_image=Image.open(os.path.join(img_folder, "particlelove.png")),
+        dark_image=Image.open(os.path.join(img_folder, "particlelove.png")),
         size=(200, 200)
     )
 
@@ -95,11 +112,11 @@ def open_browser(main_frame, width, height):
                                            font=customtkinter.CTkFont(size=20, weight="bold"))
     earth_button.grid(column=0, row=1, padx=20, pady=20)
 
-    google_button = customtkinter.CTkButton(game_browser, text="google", command=open_google,
-                                            image=img_google, compound="top", fg_color="white", text_color="black",
+    particle_love_button = customtkinter.CTkButton(game_browser, text="Particle Love Javascript Demo", command=open_particle_love,
+                                            image=img_particlelove, compound="top", fg_color="white", text_color="black",
                                             hover_color="lightgray",
                                             font=customtkinter.CTkFont(size=20, weight="bold"))
-    google_button.grid(column=1, row=1, padx=20, pady=20)
+    particle_love_button.grid(column=1, row=1, padx=20, pady=20)
 
     youtube_button = customtkinter.CTkButton(game_browser, text="youtube", command=open_youtube,
                                              image=img_youtube, compound="top", fg_color="white", text_color="black",

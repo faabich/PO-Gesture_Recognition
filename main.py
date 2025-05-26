@@ -35,8 +35,11 @@ custom_options_frame.grid_columnconfigure(0, weight=1)
 custom_options_frame.grid_columnconfigure(1, weight=1)
 custom_options_frame.grid_columnconfigure(2, weight=1)
 
+hm_window = HM_window
+
 # AI generated (threading optimization)
 def threaded_hm_window_runner(width, height):
+    global hm_window
     try:
         hm_window = HM_window.HM_window(width, height)
         hm_window.run()
@@ -52,15 +55,19 @@ def start_HM_window(HM_width, HM_height):
         cv2.destroyAllWindows()  # Close any existing OpenCV windows
         thread = threading.Thread(target=threaded_hm_window_runner, args=(HM_width, HM_height), daemon=True)
         thread.start()
-        print("hello")
+        print("started Hand Movement Window")
     except Exception as e:
         print(f"Error in HM_window thread: {e}")
 
 def checkbox_event():
     pass
 
+hand_tracking_method = "touchscreen"
+
 def optionmenu_callback(choice):
-    print("optionmenu dropdown clicked:", choice)
+    global hand_tracking_method
+    hand_tracking_method = choice
+    print(f"Selected option: {choice}")
 
 def open_hand_selection_utility():
     pass
