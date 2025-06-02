@@ -19,9 +19,6 @@ user32 = ctypes.windll.user32
 keybd_event = ctypes.windll.user32.keybd_event
 
 
-def driving_wheel_unpress_keys(key_code):
-    keybd_event(key_code, 0, 2, 0)
-
 class Gesture:
     def __init__(self):
         # Configuration ctypes pour Windows
@@ -317,28 +314,103 @@ class Gesture:
                     ctypes.windll.user32.SetCursorPos(int(screen_x), int(screen_y))
                     self.previous_time = current_time
 
-    def driving_wheel(self, landmarks, original_image):
-        # Logic to simulate the keypress based on the Y position of the hand
-        # if len(landmarks) > 0:
-        for hand_idx, hand_landmarks in enumerate(landmarks):
-            # We use the y position of the landmark 8 (index finger tip)
-            index_y_pos = hand_landmarks[2][2]  # id=8 is the index finger tip
-            imgH, imgW, imgC = original_image.shape
-            mid_y_up = imgH // 2 + 50
-            mid_y_down = imgH // 2 - 50
 
-            # Determine if the Y position is above or below the middle and simulate keypress
-            # if index_y_pos < mid_y:
-            #     driving_wheel_press_keys(KEY_A)
-            #     print("A")
-            #     if index_y_pos == mid_y:
-            if index_y_pos < mid_y_down:
-                keybd_event(0x1E, 0, 0, 0)
-                print("A")
-            elif index_y_pos > mid_y_up:
-                keybd_event(0x20, 0, 0, 0)
-                print("D")
-            elif index_y_pos > mid_y_down and index_y_pos < mid_y_up:
-                print("Zone grise")
-                keybd_event(0x1E, 0, 2, 0)
-                keybd_event(0x20, 0, 2, 0)
+
+
+
+    def driving_wheel(self, landmarks, original_image):
+        imgH, imgW, imgC = original_image.shape
+        mid_y_up = imgH // 2 + 50
+        mid_y_down = imgH // 2 - 50
+
+        if landmarks.multi_hand_landmarks:
+            #continual forward input when a hand is detected
+            keybd_event(0x57, 0, 0, 0)
+            print("W")
+
+            for idx, hand_landmarks in enumerate(landmarks.multi_hand_landmarks):
+                # get the index fingertip y position
+                index_y_pos = hand_landmarks.landmark[8].y * imgH
+
+                # if index fingertip is higher, unpress D and press A
+                if index_y_pos < mid_y_down:
+                    keybd_event(0x41, 0, 0, 0)
+                    keybd_event(0x44, 0, 2, 0)
+                    print("A")
+                # if index fingertip is lower, unpress A and press D
+                elif index_y_pos > mid_y_up:
+                    keybd_event(0x44, 0, 0, 0)
+                    keybd_event(0x41, 0, 2, 0)
+                    print("D")
+                else:
+                    # if index fingertip is in the neutral area, unpress both A and D
+                    keybd_event(0x41, 0, 2, 0)
+                    keybd_event(0x44, 0, 2, 0)
+                    print("Zone grise")
+        else:
+            # if no hand is detected, unpress every key
+            keybd_event(0x57, 0, 2, 0)
+            keybd_event(0x41, 0, 2, 0)
+            keybd_event(0x44, 0, 2, 0)
+
+
+
+
+    # function defining when a finger is folded via the y position of the tip and middle joint
+    def finger_folded(self, landmarks, tip_id, mid_id):
+        return landmarks[tip_id].y > landmarks[mid_id].y
+
+    # function to detect if the other fingers are folded
+    def is_index_only_extended(self, landmarks):
+        other_folded = (
+                self.finger_folded(landmarks, 12, 10) and
+                self.finger_folded(landmarks, 16, 14) and
+                self.finger_folded(landmarks, 20, 18)
+        )
+        return other_folded
+
+    def index_up(self, landmarks):
+        if landmarks[8].y < landmarks[6].y:
+            return "up"
+
+            # function to unpress the W, S UP and DOWN keys
+    def unpress_keys(self):
+        keybd_event(0x57, 0, 2, 0)
+        keybd_event(0x53, 0, 2, 0)
+        keybd_event(0x26, 0, 2, 0)
+        keybd_event(0x28, 0, 2, 0)
+
+    def pong(self, landmarks):
+        if landmarks.multi_hand_landmarks:
+            for idx, hand_landmarks in enumerate(landmarks.multi_hand_landmarks):
+                if landmarks.multi_handedness:
+                    hand_id = landmarks.multi_handedness[idx].classification[0].label
+                else:
+                    hand_id = "Left" if idx == 0 else "Right"
+                if self.is_index_only_extended(hand_landmarks.landmark):
+                    indexUp = self.index_up(hand_landmarks.landmark)
+                    if hand_id == "Left":
+                        if indexUp == "up":
+                            keybd_event(0x57, 0, 0, 0)
+                            keybd_event(0x53, 0, 2, 0)
+                            print("Index up → W")
+                        else:
+                            keybd_event(0x53, 0, 0, 0)
+                            keybd_event(0x57, 0, 2, 0)
+                            print("Index down → S")
+                    elif hand_id == "Right":
+                        if indexUp == "up":
+                            keybd_event(0x26, 0, 0, 0)
+                            keybd_event(0x28, 0, 2, 0)
+                            print("Index up → UP")
+                        else:
+                            keybd_event(0x28, 0, 0, 0)
+                            keybd_event(0x26, 0, 2, 0)
+                            print("Index down → DOWN")
+
+                else:
+                    self.unpress_keys()
+                    print("unknown gesture → stop")
+        else:
+            self.unpress_keys()
+            print("no hand detected → stop")
