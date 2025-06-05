@@ -65,6 +65,14 @@ class Gesture:
         self.last_gesture_change_time = {"Left": 0, "Right": 0}
         self.debounce_time = 0.2  # seconds
 
+        self.zoom_mode = False
+        self.initial_distance = None
+        self.zoom_threshold = 50  # Minimum distance change to trigger zoom
+        self.zoom_center_x = None
+        self.zoom_center_y = None
+        self.last_zoom_distance = None
+        self.zoom_sensitivity = 2.0  # Adjust this to make zoom more/less sensitive
+
 
     def initialize_gesture(self):
         # Création de la fenêtre Tkinter transparente
@@ -204,54 +212,147 @@ class Gesture:
         self.last_x[hand_id] = x
         self.last_y[hand_id] = y
 
-
     def touchscreen_mode(self, landmarks, mp_drawing, mp_hands, frame, has_cursor):
-        # Dictionnaire pour stocker les positions des mains
+        # Your existing code...
         hand_positions = {}
+        both_hands_closed = True
+        detected_hands_this_frame = set()
 
         if landmarks.multi_hand_landmarks:
             for idx, hand_landmarks in enumerate(landmarks.multi_hand_landmarks):
-                # Déterminer s'il s'agit de la main gauche ou droite
+                # Determine hand ID
                 if landmarks.multi_handedness:
                     hand_id = landmarks.multi_handedness[idx].classification[0].label
                 else:
                     hand_id = "Left" if idx == 0 else "Right"
 
-                # self.detected_hands.add(hand_id)
+                detected_hands_this_frame.add(hand_id)
 
-                # Dessiner les repères de la main
-                # mp_drawing.draw_landmarks(
-                #     frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-
-                # Vérifier le geste de clic
+                # Check if hand is closed
                 is_clicking = self.is_fingers_closed(hand_landmarks.landmark)
 
-                # Obtenir la position de l'index (repère 8)
+                # Get hand position
                 palm_hand = hand_landmarks.landmark[0]
-
-                screen_x = int(palm_hand.x * self.SCREEN_WIDTH * 1.2 - 0.1 * self.SCREEN_WIDTH)     # Add marging on borders
+                screen_x = int(palm_hand.x * self.SCREEN_WIDTH * 1.2 - 0.1 * self.SCREEN_WIDTH)
                 screen_y = int(palm_hand.y * self.SCREEN_HEIGHT * 1.2 - 0.1 * self.SCREEN_HEIGHT)
 
-                # Afficher l'état de la main
+                # Store hand position and state
+                hand_positions[hand_id] = (screen_x, screen_y)
+
+                # Check if this hand is NOT closed
+                if not is_clicking:
+                    both_hands_closed = False
+
+                # Display hand state
                 cv2.putText(frame, f"Main {hand_id}: {'Clic' if is_clicking else 'Repos'}",
                             (10, 30 + idx * 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-                self.handle_touch_for_hand(hand_id, screen_x, screen_y, is_clicking)
+            # Check for zoom gesture (both hands detected and both closed)
+            if len(detected_hands_this_frame) == 2 and both_hands_closed:
+                if "Left" in hand_positions and "Right" in hand_positions:
+                    self.handle_zoom_gesture(hand_positions["Left"], hand_positions["Right"])
+            else:
+                # Reset zoom mode if conditions not met
+                if self.zoom_mode:
+                    self.zoom_mode = False
+                    print("Zoom mode ended")
 
-                if has_cursor:
-                    pass
+            # Handle individual hand touch events (only if not in zoom mode)
+            if not self.zoom_mode:
+                for idx, hand_landmarks in enumerate(landmarks.multi_hand_landmarks):
+                    if landmarks.multi_handedness:
+                        hand_id = landmarks.multi_handedness[idx].classification[0].label
+                    else:
+                        hand_id = "Left" if idx == 0 else "Right"
 
-                # Stocker la position de la main
-                hand_positions[hand_id] = (screen_x, screen_y)
+                    is_clicking = self.is_fingers_closed(hand_landmarks.landmark)
+                    palm_hand = hand_landmarks.landmark[0]
+                    screen_x = int(palm_hand.x * self.SCREEN_WIDTH * 1.2 - 0.1 * self.SCREEN_WIDTH)
+                    screen_y = int(palm_hand.y * self.SCREEN_HEIGHT * 1.2 - 0.1 * self.SCREEN_HEIGHT)
 
+                    self.handle_touch_for_hand(hand_id, screen_x, screen_y, is_clicking)
 
-            # Mettre à jour l'affichage des cercles
+            # Update circles display
             self.update_circles(hand_positions)
 
-        # Afficher l'image de la caméra
-        # cv2.imshow('MediaPipe Hands', frame)
-
         return self.root
+
+    def calculate_hand_distance(self, pos1, pos2):
+        """Calculate distance between two hand positions"""
+        return math.sqrt((pos1[0] - pos2[0]) ** 2 + (pos1[1] - pos2[1]) ** 2)
+
+    def get_zoom_center(self, pos1, pos2):
+        """Get the center point between two hands for zoom focus"""
+        center_x = (pos1[0] + pos2[0]) // 2
+        center_y = (pos1[1] + pos2[1]) // 2
+        return center_x, center_y
+
+    def handle_zoom_gesture(self, left_pos, right_pos):
+        """Handle zoom in/out based on hand distance"""
+        current_distance = self.calculate_hand_distance(left_pos, right_pos)
+        center_x, center_y = self.get_zoom_center(left_pos, right_pos)
+
+        if not self.zoom_mode:
+            # Start zoom mode
+            self.zoom_mode = True
+            self.initial_distance = current_distance
+            self.last_zoom_distance = current_distance
+            self.zoom_center_x = center_x
+            self.zoom_center_y = center_y
+            print(f"Zoom mode started at distance: {current_distance}")
+            return
+
+        # Calculate distance change
+        distance_change = current_distance - self.last_zoom_distance
+
+        # Only process if change is significant enough
+        if abs(distance_change) > self.zoom_threshold:
+            # Calculate zoom factor based on distance change
+            zoom_factor = distance_change * self.zoom_sensitivity
+
+            # Determine zoom direction and simulate pinch gesture
+            if distance_change > 0:
+                # Hands moving apart - zoom in
+                self.simulate_zoom_in(center_x, center_y, abs(zoom_factor))
+                print(f"Zoom IN - Distance: {current_distance}, Change: {distance_change}")
+            else:
+                # Hands moving closer - zoom out
+                self.simulate_zoom_out(center_x, center_y, abs(zoom_factor))
+                print(f"Zoom OUT - Distance: {current_distance}, Change: {distance_change}")
+
+            self.last_zoom_distance = current_distance
+
+    def simulate_zoom_in(self, center_x, center_y, zoom_amount):
+        """Simulate zoom in by moving touch points apart from center"""
+        # Calculate offset based on zoom amount
+        offset = int(zoom_amount)
+
+        # Start positions (close together at center)
+        start_left = (center_x - 20, center_y)
+        start_right = (center_x + 20, center_y)
+
+        # End positions (further apart)
+        end_left = (center_x - 20 - offset, center_y)
+        end_right = (center_x + 20 + offset, center_y)
+
+        # Use the touchPinch function from touch.py
+        touch.touchPinch(start_left, end_left, start_right, end_right, count=5, duration=0.3)
+
+    def simulate_zoom_out(self, center_x, center_y, zoom_amount):
+        """Simulate zoom out by moving touch points toward center"""
+        # Calculate offset based on zoom amount
+        offset = int(zoom_amount)
+
+        # Start positions (far apart)
+        start_left = (center_x - 20 - offset, center_y)
+        start_right = (center_x + 20 + offset, center_y)
+
+        # End positions (closer together at center)
+        end_left = (center_x - 20, center_y)
+        end_right = (center_x + 20, center_y)
+
+        # Use the touchPinch function from touch.py
+        touch.touchPinch(start_left, end_left, start_right, end_right, count=5, duration=0.3)
 
     def click_mouse(self, landmarks, frame):
         # Process each hand's landmarks
