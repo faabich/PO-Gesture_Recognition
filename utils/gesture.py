@@ -239,7 +239,13 @@ class Gesture:
                 self.handle_touch_for_hand(hand_id, screen_x, screen_y, is_clicking)
 
                 if has_cursor:
-                    pass
+                    # Déplacer les curseurs pour les deux mains
+                    current_time = time.time()
+                    if current_time - self.previous_time > 0.008:  # 8ms de délai
+                        # Déplacer le curseur système pour la main droite
+                        if hand_id == "Right":
+                            ctypes.windll.user32.SetCursorPos(screen_x, screen_y)
+                        self.previous_time = current_time
 
                 # Stocker la position de la main
                 hand_positions[hand_id] = (screen_x, screen_y)

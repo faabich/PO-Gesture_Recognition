@@ -10,6 +10,7 @@ import customtkinter as ctk
 import webbrowser
 import customtkinter
 import os
+import subprocess
 from utils.gesture import *
 from utils.hand_detector import *
 from PIL import Image
@@ -48,7 +49,7 @@ def open_browser(main_frame, width, height):
     game_browser.grid_columnconfigure(3, weight=1)
 
     def open_earth():
-        webbrowser.open('https://earth.google.com/')
+        webbrowser.open('https://earth.google.com/web/@46.82164296,6.50019955,1077.83283169a,556.60504226d,35y,238.80930889h,45t') #
         try:
             hm_window = HM_window.HM_window(width, height)
             hm_window.run("earth")
@@ -67,11 +68,35 @@ def open_browser(main_frame, width, height):
             print(e)
             # traceback.print_exc()
 
-    def open_youtube():
-        webbrowser.open('https://www.youtube.com/')
+    def open_paint():
+        webbrowser.open('https://sketch.io/sketchpad/')
+
 
     def open_btd4():
         webbrowser.open('https://www.crazygames.com/game/bloons-tower-defense-4')
+
+    def open_chess():
+        webbrowser.open('https://plainchess.timwoelfle.de/')
+
+    def open_ssp():
+        try:
+            # Obtenir le chemin vers le dossier racine du projet
+            parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            # Chemin vers l'exécutable dans un sous-dossier 'games'
+            exe_path = os.path.join(parent_dir, "games", "ssp", "SoundSpacePlus.exe")
+
+            # Vérifier si le fichier existe
+            if os.path.exists(exe_path):
+                # Try to start the .exe
+                try:
+                    subprocess.Popen([exe_path], shell=True)
+                except Exception as e:
+                    print("Erreur lors du lancement du jeu")
+                    print(e)
+            else:
+                print(f"Erreur: Le fichier {exe_path} n'existe pas")
+        except Exception as e:
+            pass
 
 
     """img LINK LIST"""
@@ -91,9 +116,9 @@ def open_browser(main_frame, width, height):
         size=(200, 200)
     )
 
-    img_youtube = customtkinter.CTkImage(
-        light_image=Image.open(os.path.join(img_folder, "youtube.png")),
-        dark_image=Image.open(os.path.join(img_folder, "youtube.png")),
+    img_paint = customtkinter.CTkImage(
+        light_image=Image.open(os.path.join(img_folder, "paint.jpg")),
+        dark_image=Image.open(os.path.join(img_folder, "paint.jpg")),
         size=(200, 200)
     )
 
@@ -103,10 +128,21 @@ def open_browser(main_frame, width, height):
         size=(200, 200)
     )
 
+    img_chess = customtkinter.CTkImage(
+        light_image=Image.open(os.path.join(img_folder, "chess.png")),
+        dark_image=Image.open(os.path.join(img_folder, "chess.png")),
+        size=(200, 200)
+    )
+
+    img_ssp = customtkinter.CTkImage(
+        light_image=Image.open(os.path.join(img_folder, "ssp.png")),
+        dark_image=Image.open(os.path.join(img_folder, "ssp.png")),
+        size=(200, 200)
+    )
 
     """BUTTONS"""
 
-    earth_button = customtkinter.CTkButton(game_browser, text="google earth", command=open_earth,
+    earth_button = customtkinter.CTkButton(game_browser, text="Google Earth", command=open_earth,
                                            image=img_earth, compound="top", fg_color="white", text_color="black",
                                            hover_color="lightgray",
                                            font=customtkinter.CTkFont(size=20, weight="bold"))
@@ -118,11 +154,11 @@ def open_browser(main_frame, width, height):
                                             font=customtkinter.CTkFont(size=20, weight="bold"))
     particle_love_button.grid(column=1, row=1, padx=20, pady=20)
 
-    youtube_button = customtkinter.CTkButton(game_browser, text="youtube", command=open_youtube,
-                                             image=img_youtube, compound="top", fg_color="white", text_color="black",
+    paint_button = customtkinter.CTkButton(game_browser, text="Paint", command=open_paint,
+                                             image=img_paint, compound="top", fg_color="white", text_color="black",
                                              hover_color="lightgray",
                                              font=customtkinter.CTkFont(size=20, weight="bold"))
-    youtube_button.grid(column=2, row=1, padx=20, pady=20)
+    paint_button.grid(column=2, row=1, padx=20, pady=20)
 
     btd4_button = customtkinter.CTkButton(game_browser, text="bloons tower deffense 4", command=open_btd4,
                                           image=img_btd4, compound="top", fg_color="white", text_color="black",
@@ -130,7 +166,14 @@ def open_browser(main_frame, width, height):
                                           font=customtkinter.CTkFont(size=20, weight="bold"))
     btd4_button.grid(column=3, row=1, padx=20, pady=20)
 
+    chess_button = customtkinter.CTkButton(game_browser, text="Play Chess", command=open_chess,
+                                           image=img_chess, compound="top", fg_color="white", text_color="black",
+                                           hover_color="lightgray",
+                                           font=customtkinter.CTkFont(size=20, weight="bold"))
+    chess_button.grid(column=0, row=2, padx=20, pady=20)
 
-def open_link(url):
-    webbrowser.open(url)
-
+    ssp_button = customtkinter.CTkButton(game_browser, text="Sound Space+", command=open_ssp,
+                                         image=img_ssp, compound="top", fg_color="white", text_color="black",
+                                         hover_color="lightgray",
+                                         font=customtkinter.CTkFont(size=20, weight="bold"))
+    ssp_button.grid(column=1, row=2, padx=20, pady=20)
