@@ -334,13 +334,13 @@ class Gesture:
 
                 # if index fingertip is higher, unpress D and press A
                 if index_y_pos < mid_y_down:
-                    keybd_event(0x41, 0, 0, 0)
-                    keybd_event(0x44, 0, 2, 0)
+                    keybd_event(0x41, 0, 2, 0)
+                    keybd_event(0x44, 0, 0, 0)
                     print("A")
                 # if index fingertip is lower, unpress A and press D
                 elif index_y_pos > mid_y_up:
-                    keybd_event(0x44, 0, 0, 0)
-                    keybd_event(0x41, 0, 2, 0)
+                    keybd_event(0x44, 0, 2, 0)
+                    keybd_event(0x41, 0, 0, 0)
                     print("D")
                 else:
                     # if index fingertip is in the neutral area, unpress both A and D
@@ -360,57 +360,88 @@ class Gesture:
     def finger_folded(self, landmarks, tip_id, mid_id):
         return landmarks[tip_id].y > landmarks[mid_id].y
 
-    # function to detect if the other fingers are folded
-    def is_index_only_extended(self, landmarks):
-        other_folded = (
+    # function to detect if the index is extended and the other fingers are folded
+    def index_only_extended(self, landmarks):
+        index_extended = landmarks[8].y < landmarks[6].y
+        others_folded = (
                 self.finger_folded(landmarks, 12, 10) and
                 self.finger_folded(landmarks, 16, 14) and
                 self.finger_folded(landmarks, 20, 18)
         )
-        return other_folded
+        return index_extended and others_folded
 
-    def index_up(self, landmarks):
-        if landmarks[8].y < landmarks[6].y:
-            return "up"
 
-            # function to unpress the W, S UP and DOWN keys
+    # function to detect if all the fingers are extended
+    def all_fingers_up(self, landmarks):
+        all_fingers_up = (
+            landmarks[8].y < landmarks[6].y and
+            landmarks[12].y < landmarks[10].y and
+            landmarks[16].y < landmarks[14].y and
+            landmarks[20].y < landmarks[18].y
+        )
+        return all_fingers_up
+
+    def all_fingers_folded(self, landmarks):
+        all_fingers_folded = (
+            self.finger_folded(landmarks, 8, 6) and
+            self.finger_folded(landmarks, 12, 10) and
+            self.finger_folded(landmarks, 16, 14) and
+            self.finger_folded(landmarks, 20, 18)
+        )
+        return all_fingers_folded
+
+
+    # function to unpress the W, S UP and DOWN keys
     def unpress_keys(self):
         keybd_event(0x57, 0, 2, 0)
         keybd_event(0x53, 0, 2, 0)
         keybd_event(0x26, 0, 2, 0)
         keybd_event(0x28, 0, 2, 0)
 
-    def pong(self, landmarks):
-        if landmarks.multi_hand_landmarks:
-            for idx, hand_landmarks in enumerate(landmarks.multi_hand_landmarks):
-                if landmarks.multi_handedness:
-                    hand_id = landmarks.multi_handedness[idx].classification[0].label
+
+    # used ChatGPT to resolve a confusion with the results object of Mediapipe
+    def pong(self, results):
+        if results.multi_hand_landmarks:
+            for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
+                landmarks = hand_landmarks.landmark
+
+                # Identification de la main (Left / Right)
+                if results.multi_handedness:
+                    hand_id = results.multi_handedness[idx].classification[0].label
                 else:
                     hand_id = "Left" if idx == 0 else "Right"
-                if self.is_index_only_extended(hand_landmarks.landmark):
-                    indexUp = self.index_up(hand_landmarks.landmark)
-                    if hand_id == "Left":
-                        if indexUp == "up":
-                            keybd_event(0x57, 0, 0, 0)
-                            keybd_event(0x53, 0, 2, 0)
-                            print("Index up → W")
-                        else:
-                            keybd_event(0x53, 0, 0, 0)
-                            keybd_event(0x57, 0, 2, 0)
-                            print("Index down → S")
-                    elif hand_id == "Right":
-                        if indexUp == "up":
-                            keybd_event(0x26, 0, 0, 0)
-                            keybd_event(0x28, 0, 2, 0)
-                            print("Index up → UP")
-                        else:
-                            keybd_event(0x28, 0, 0, 0)
-                            keybd_event(0x26, 0, 2, 0)
-                            print("Index down → DOWN")
+
+                only_index_up = self.index_only_extended(landmarks)
+                all_fingers_up = self.all_fingers_up(landmarks)
+                all_fingers_folded = self.all_fingers_folded(landmarks)
+
+                if hand_id == "Left":
+                    if only_index_up:
+                        keybd_event(0x57, 0, 0, 0)
+                        keybd_event(0x53, 0, 2, 0)
+                        print("Index up → W")
+                    elif all_fingers_up:
+                        keybd_event(0x53, 0, 2, 0)
+                        keybd_event(0x57, 0, 2, 0)
+                        print("Stand still")
+                    elif all_fingers_folded:
+                        keybd_event(0x53, 0, 0, 0)
+                        keybd_event(0x57, 0, 2, 0)
+                        print("Index down → S")
+                elif hand_id == "Right":
+                    if only_index_up:
+                        keybd_event(0x26, 0, 0, 0)
+                        keybd_event(0x28, 0, 2, 0)
+                        print("Index up → UP")
+                    elif all_fingers_up:
+                        keybd_event(0x26, 0, 2, 0)
+                        keybd_event(0x28, 0, 2, 0)
+                        print("Stand still")
+                    elif all_fingers_folded:
+                        keybd_event(0x28, 0, 0, 0)
+                        keybd_event(0x26, 0, 2, 0)
+                        print("Index down → DOWN")
 
                 else:
                     self.unpress_keys()
-                    print("unknown gesture → stop")
-        else:
-            self.unpress_keys()
-            print("no hand detected → stop")
+                    print("no hand detected → stop")
