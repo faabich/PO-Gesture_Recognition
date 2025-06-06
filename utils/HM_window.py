@@ -33,6 +33,8 @@ class HM_window:
                 frame = cv2.flip(frame, 1)
                 hand_landmarks_results, mp_drawing_utils, mp_hands_solutions = self.hand_detector.get_hand_landmarks(frame)
                 match parameter:
+                    case "basic":
+                        self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT,False)
                     case "earth":
                         self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT,False)
                     case "particle love":

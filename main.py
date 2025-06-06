@@ -42,7 +42,7 @@ def threaded_hm_window_runner(width, height):
     global hm_window
     try:
         hm_window = HM_window.HM_window(width, height)
-        hm_window.run()
+        hm_window.run("basic")
     except Exception as e:
         print("Error in threaded_hm_window_runner:")
         print(e)

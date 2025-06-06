@@ -2,7 +2,7 @@
 Name:         gesture.py
 Author:       Alex Kamano, Kilian Testard, Alexandre Ramirez, Nathan Filipowitz et Fabian Rostello
 Date:         03.04.2025
-Version:      0.1
+Version:      0.2 - Refactored Zoom Implementation
 Description:  Multiple gesture recognition
 """
 
@@ -21,6 +21,7 @@ keybd_event = ctypes.windll.user32.keybd_event
 
 class Gesture:
     def __init__(self):
+        # --- (Your existing __init__ code remains unchanged) ---
         # Configuration ctypes pour Windows
         self.user32 = ctypes.windll.user32
         self.SCREEN_WIDTH = self.user32.GetSystemMetrics(0)  # SM_CXSCREEN constant
@@ -54,7 +55,11 @@ class Gesture:
 
         self.detected_hands = set()
 
-        # Initialize variables to track finger state
+        # NEW: State variable to track the current gesture mode
+        # Can be 'none', 'grab', or 'zoom'
+        self.gesture_mode = 'none'
+
+        # --- (The rest of your __init__ is unchanged) ---
         self.hand_closed = {"Left": False, "Right": False}
         self.last_x = {"Left": None, "Right": None}
         self.last_y = {"Left": None, "Right": None}
@@ -71,6 +76,7 @@ class Gesture:
         self.zoom_sensitivity = 2.0  # Adjust this to make zoom more/less sensitive
 
 
+    # --- (All your other methods like initialize_gesture, make_click_through, etc., remain here unchanged) ---
     def initialize_gesture(self):
         # Création de la fenêtre Tkinter transparente
         self.root.title("Hand Circles")
@@ -173,183 +179,96 @@ class Gesture:
 
         self.make_click_through()
 
-    def handle_touch_for_hand(self, hand_id, x, y, is_closed):
-        """
-        Handle touch events for a specific hand with improved touch handling
-        """
-        current_time = time.time()
-        # Use finger 0 for Left hand, finger 1 for Right hand
-        finger_index = 0 if hand_id == "Left" else 1
+    # This function can now be removed, as its logic is integrated into the new touchscreen_mode
+    # def handle_touch_for_hand(self, hand_id, x, y, is_closed):
 
-        # Check if gesture has changed with debouncing
-        if is_closed != self.hand_closed[hand_id] and (
-                current_time - self.last_gesture_change_time[hand_id]) > self.debounce_time:
-            self.last_gesture_change_time[hand_id] = current_time
-
-            # Update hand state
-            self.hand_closed[hand_id] = is_closed
-
-            if is_closed:
-                print(f"{hand_id} hand: Touch down at {x}, {y}")
-                # With the new library, just specify which finger index to use
-                touch.touchDown(x, y, fingerRadius=5, holdEvents=True, finger=finger_index)
-            else:
-                print(f"{hand_id} hand: Touch up at {x}, {y}")
-                # Just specify which finger index to release
-                touch.touchUp(x, y, fingerRadius=5, finger=finger_index)
-
-        # If hand is closed and position has changed, simulate move
-        elif is_closed and (self.last_x[hand_id] is None or self.last_y[hand_id] is None or
-                            abs(x - self.last_x[hand_id]) > 5 or abs(y - self.last_y[hand_id]) > 5):
-            print(f"{hand_id} hand: Touch move to {x}, {y}")
-            # Each hand moves its own touch point
-            touch.touchMove(x, y, fingerRadius=5, finger=finger_index)
-
-        # Update last known position
-        self.last_x[hand_id] = x
-        self.last_y[hand_id] = y
+    # These functions are no longer needed as we are not using the flawed touchPinch approach
+    # def handle_zoom_gesture(self, left_pos, right_pos):
+    # def simulate_zoom_in(self, center_x, center_y, zoom_amount):
+    # def simulate_zoom_out(self, center_x, center_y, zoom_amount):
 
     def touchscreen_mode(self, landmarks, mp_drawing, mp_hands, frame, has_cursor):
-        # Your existing code...
-        hand_positions = {}
-        both_hands_closed = True
-        detected_hands_this_frame = set()
+        hand_info = {} # Store position and closed state for each hand
 
         if landmarks.multi_hand_landmarks:
             for idx, hand_landmarks in enumerate(landmarks.multi_hand_landmarks):
-                # Determine hand ID
-                if landmarks.multi_handedness:
-                    hand_id = landmarks.multi_handedness[idx].classification[0].label
-                else:
-                    hand_id = "Left" if idx == 0 else "Right"
-
-                detected_hands_this_frame.add(hand_id)
+                # Determine hand ID ("Left" or "Right")
+                hand_id = landmarks.multi_handedness[idx].classification[0].label
 
                 # Check if hand is closed
-                is_clicking = self.is_fingers_closed(hand_landmarks.landmark)
+                is_closed = self.is_fingers_closed(hand_landmarks.landmark)
 
-                # Get hand position
+                # Get hand position (wrist) and scale to screen
                 palm_hand = hand_landmarks.landmark[0]
                 screen_x = int(palm_hand.x * self.SCREEN_WIDTH * 1.2 - 0.1 * self.SCREEN_WIDTH)
                 screen_y = int(palm_hand.y * self.SCREEN_HEIGHT * 1.2 - 0.1 * self.SCREEN_HEIGHT)
 
-                # Store hand position and state
-                hand_positions[hand_id] = (screen_x, screen_y)
+                # Store all info for this frame
+                hand_info[hand_id] = {'pos': (screen_x, screen_y), 'closed': is_closed}
 
-                # Check if this hand is NOT closed
-                if not is_clicking:
-                    both_hands_closed = False
-
-                # Display hand state
-                cv2.putText(frame, f"Main {hand_id}: {'Clic' if is_clicking else 'Repos'}",
+                # Display hand state on the CV2 frame
+                cv2.putText(frame, f"Main {hand_id}: {'Closed' if is_closed else 'Open'}",
                             (10, 30 + idx * 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-            # Check for zoom gesture (both hands detected and both closed)
-            if len(detected_hands_this_frame) == 2 and both_hands_closed:
-                if "Left" in hand_positions and "Right" in hand_positions:
-                    self.handle_zoom_gesture(hand_positions["Left"], hand_positions["Right"])
+        # --- GESTURE LOGIC ---
+
+        num_hands = len(hand_info)
+        closed_hands = [hand for hand, info in hand_info.items() if info['closed']]
+        num_closed_hands = len(closed_hands)
+
+        # State: Zooming (two hands are closed)
+        if num_closed_hands == 2:
+            if self.gesture_mode != 'zoom':
+                # --- Start of Zoom ---
+                print("Starting Zoom Mode")
+                self.gesture_mode = 'zoom'
+                left_pos = hand_info['Left']['pos']
+                right_pos = hand_info['Right']['pos']
+                # finger 0 for Left, finger 1 for Right
+                touch.touchDown(left_pos[0], left_pos[1], finger=0)
+                touch.touchDown(right_pos[0], right_pos[1], finger=1)
             else:
-                # Reset zoom mode if conditions not met
-                if self.zoom_mode:
-                    self.zoom_mode = False
-                    print("Zoom mode ended")
+                # --- Continue Zoom ---
+                left_pos = hand_info['Left']['pos']
+                right_pos = hand_info['Right']['pos']
+                print(f"Updating Zoom Left: {left_pos[0]}, {left_pos[1]} | Right: {right_pos[0]}, {right_pos[1]}")
+                touch.touchMove(left_pos[0], left_pos[1], finger=0)
+                touch.touchMove(right_pos[0], right_pos[1], finger=1)
 
-            # Handle individual hand touch events (only if not in zoom mode)
-            if not self.zoom_mode:
-                for idx, hand_landmarks in enumerate(landmarks.multi_hand_landmarks):
-                    if landmarks.multi_handedness:
-                        hand_id = landmarks.multi_handedness[idx].classification[0].label
-                    else:
-                        hand_id = "Left" if idx == 0 else "Right"
+        # State: Grabbing (exactly one hand is closed)
+        elif num_closed_hands == 1:
+            hand_id = closed_hands[0]
+            pos = hand_info[hand_id]['pos']
 
-                    is_clicking = self.is_fingers_closed(hand_landmarks.landmark)
-                    palm_hand = hand_landmarks.landmark[0]
-                    screen_x = int(palm_hand.x * self.SCREEN_WIDTH * 1.2 - 0.1 * self.SCREEN_WIDTH)
-                    screen_y = int(palm_hand.y * self.SCREEN_HEIGHT * 1.2 - 0.1 * self.SCREEN_HEIGHT)
+            # Use finger 0 for left hand grab, finger 1 for right hand grab
+            finger_index = 0 if hand_id == "Left" else 1
 
-                    self.handle_touch_for_hand(hand_id, screen_x, screen_y, is_clicking)
+            if self.gesture_mode != 'grab':
+                # --- Start of Grab ---
+                print(f"Starting Grab with {hand_id} hand")
+                self.gesture_mode = 'grab'
+                # If we were just zooming, make sure the other finger is lifted
+                touch.touchUp(0, 0, finger=1 - finger_index) # Send a 'safe' touchUp
+                touch.touchDown(pos[0], pos[1], finger=finger_index)
+            else:
+                # --- Continue Grab ---
+                print(f"Moving with {hand_id} hand")
+                touch.touchMove(pos[0], pos[1], finger=finger_index)
 
-            # Update circles display
-            self.update_circles(hand_positions)
+        # State: Idle (no hands are closed)
+        else:
+            if self.gesture_mode != 'none':
+                # --- End of Gesture ---
+                print(f"Ending gesture: {self.gesture_mode}")
+                # Release all touch points to be safe
+                touch.touchUp(0, 0, finger=0)
+                touch.touchUp(0, 0, finger=1)
+                self.gesture_mode = 'none'
+
+        # Update the visual circles on the transparent window
+        self.update_circles({hand: info['pos'] for hand, info in hand_info.items()})
 
         return self.root
-
-    def calculate_hand_distance(self, pos1, pos2):
-        """Calculate distance between two hand positions"""
-        return math.sqrt((pos1[0] - pos2[0]) ** 2 + (pos1[1] - pos2[1]) ** 2)
-
-    def get_zoom_center(self, pos1, pos2):
-        """Get the center point between two hands for zoom focus"""
-        center_x = (pos1[0] + pos2[0]) // 2
-        center_y = (pos1[1] + pos2[1]) // 2
-        return center_x, center_y
-
-    def handle_zoom_gesture(self, left_pos, right_pos):
-        """Handle zoom in/out based on hand distance"""
-        current_distance = self.calculate_hand_distance(left_pos, right_pos)
-        center_x, center_y = self.get_zoom_center(left_pos, right_pos)
-
-        if not self.zoom_mode:
-            # Start zoom mode
-            self.zoom_mode = True
-            self.initial_distance = current_distance
-            self.last_zoom_distance = current_distance
-            self.zoom_center_x = center_x
-            self.zoom_center_y = center_y
-            print(f"Zoom mode started at distance: {current_distance}")
-            return
-
-        # Calculate distance change
-        distance_change = current_distance - self.last_zoom_distance
-
-        # Only process if change is significant enough
-        if abs(distance_change) > self.zoom_threshold:
-            # Calculate zoom factor based on distance change
-            zoom_factor = distance_change * self.zoom_sensitivity
-
-            # Determine zoom direction and simulate pinch gesture
-            if distance_change > 0:
-                # Hands moving apart - zoom in
-                self.simulate_zoom_in(center_x, center_y, abs(zoom_factor))
-                print(f"Zoom IN - Distance: {current_distance}, Change: {distance_change}")
-            else:
-                # Hands moving closer - zoom out
-                self.simulate_zoom_out(center_x, center_y, abs(zoom_factor))
-                print(f"Zoom OUT - Distance: {current_distance}, Change: {distance_change}")
-
-            self.last_zoom_distance = current_distance
-
-    def simulate_zoom_in(self, center_x, center_y, zoom_amount):
-        """Simulate zoom in by moving touch points apart from center"""
-        # Calculate offset based on zoom amount
-        offset = int(zoom_amount)
-
-        # Start positions (close together at center)
-        start_left = (center_x - 20, center_y)
-        start_right = (center_x + 20, center_y)
-
-        # End positions (further apart)
-        end_left = (center_x - 20 - offset, center_y)
-        end_right = (center_x + 20 + offset, center_y)
-
-        # Use the touchPinch function from touch.py
-        touch.touchPinch(start_left, end_left, start_right, end_right, count=5, duration=0.3)
-
-    def simulate_zoom_out(self, center_x, center_y, zoom_amount):
-        """Simulate zoom out by moving touch points toward center"""
-        # Calculate offset based on zoom amount
-        offset = int(zoom_amount)
-
-        # Start positions (far apart)
-        start_left = (center_x - 20 - offset, center_y)
-        start_right = (center_x + 20 + offset, center_y)
-
-        # End positions (closer together at center)
-        end_left = (center_x - 20, center_y)
-        end_right = (center_x + 20, center_y)
-
-        # Use the touchPinch function from touch.py
-        touch.touchPinch(start_left, end_left, start_right, end_right, count=5, duration=0.3)
 
     def click_mouse(self, landmarks, frame):
         # Process each hand's landmarks
@@ -455,8 +374,6 @@ class Gesture:
             keybd_event(0x44, 0, 2, 0)
 
 
-
-
     # function defining when a finger is folded via the y position of the tip and middle joint
     def finger_folded(self, landmarks, tip_id, mid_id):
         return landmarks[tip_id].y > landmarks[mid_id].y
@@ -474,7 +391,7 @@ class Gesture:
         if landmarks[8].y < landmarks[6].y:
             return "up"
 
-            # function to unpress the W, S UP and DOWN keys
+    # function to unpress the W, S UP and DOWN keys
     def unpress_keys(self):
         keybd_event(0x57, 0, 2, 0)
         keybd_event(0x53, 0, 2, 0)
