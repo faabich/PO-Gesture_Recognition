@@ -318,35 +318,38 @@ class Gesture:
 
 
 
-    def driving_wheel(self, landmarks, original_image):
+    def driving_wheel(self, results, original_image):
         imgH, imgW, imgC = original_image.shape
         mid_y_up = imgH // 2 + 50
         mid_y_down = imgH // 2 - 50
 
-        if landmarks.multi_hand_landmarks:
-            #continual forward input when a hand is detected
-            keybd_event(0x57, 0, 0, 0)
-            print("W")
-
-            for idx, hand_landmarks in enumerate(landmarks.multi_hand_landmarks):
-                # get the index fingertip y position
-                index_y_pos = hand_landmarks.landmark[8].y * imgH
-
-                # if index fingertip is higher, unpress D and press A
-                if index_y_pos < mid_y_down:
-                    keybd_event(0x41, 0, 2, 0)
-                    keybd_event(0x44, 0, 0, 0)
-                    print("A")
-                # if index fingertip is lower, unpress A and press D
-                elif index_y_pos > mid_y_up:
-                    keybd_event(0x44, 0, 2, 0)
-                    keybd_event(0x41, 0, 0, 0)
-                    print("D")
+        if results.multi_hand_landmarks:
+            for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
+                # Identification de la main (Left / Right)
+                if results.multi_handedness:
+                    hand_id = results.multi_handedness[idx].classification[0].label
                 else:
-                    # if index fingertip is in the neutral area, unpress both A and D
-                    keybd_event(0x41, 0, 2, 0)
-                    keybd_event(0x44, 0, 2, 0)
-                    print("Zone grise")
+                    hand_id = "Left" if idx == 0 else "Right"
+
+                if hand_id == "right":
+                    # get the index fingertip y position
+                    index_y_pos = hand_landmarks.landmark[8].y * imgH
+
+                    # if index fingertip is higher, unpress D and press A
+                    if index_y_pos < mid_y_down:
+                        keybd_event(0x41, 0, 2, 0)
+                        keybd_event(0x44, 0, 0, 0)
+                        print("A")
+                    # if index fingertip is lower, unpress A and press D
+                    elif index_y_pos > mid_y_up:
+                        keybd_event(0x44, 0, 2, 0)
+                        keybd_event(0x41, 0, 0, 0)
+                        print("D")
+                    else:
+                        # if index fingertip is in the neutral area, unpress both A and D
+                        keybd_event(0x41, 0, 2, 0)
+                        keybd_event(0x44, 0, 2, 0)
+                        print("Zone grise")
         else:
             # if no hand is detected, unpress every key
             keybd_event(0x57, 0, 2, 0)
