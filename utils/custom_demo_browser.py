@@ -62,6 +62,7 @@ def open_browser(main_frame, width, height):
         webbrowser.open('https://particle-love.com/')
         try:
             hm_window = HM_window.HM_window(width, height)
+            print("je passe par ici pour ouvrir particle love")
             hm_window.run("particle love")
         except Exception as e:
             print("Error in threaded_hm_window_runner:")
@@ -70,13 +71,31 @@ def open_browser(main_frame, width, height):
 
     def open_paint():
         webbrowser.open('https://sketch.io/sketchpad/')
+        try:
+            hm_window = HM_window.HM_window(width, height)
+            hm_window.run("paint")
+        except Exception as e:
+            print("Error in threaded_hm_window_runner:")
+            print(e)
 
 
     def open_btd4():
         webbrowser.open('https://www.crazygames.com/game/bloons-tower-defense-4')
+        try:
+            hm_window = HM_window.HM_window(width, height)
+            hm_window.run("btd4")
+        except Exception as e:
+            print("Error in threaded_hm_window_runner:")
+            print(e)
 
     def open_chess():
         webbrowser.open('https://plainchess.timwoelfle.de/')
+        try:
+            hm_window = HM_window.HM_window(width, height)
+            hm_window.run("chess")
+        except Exception as e:
+            print("Error in threaded_hm_window_runner:")
+            print(e)
 
     def open_ssp():
         try:
@@ -97,6 +116,12 @@ def open_browser(main_frame, width, height):
                 print(f"Erreur: Le fichier {exe_path} n'existe pas")
         except Exception as e:
             pass
+        try:
+            hm_window = HM_window.HM_window(width, height)
+            hm_window.run("ssp")
+        except Exception as e:
+            print("Error in threaded_hm_window_runner:")
+            print(e)
 
 
     """img LINK LIST"""

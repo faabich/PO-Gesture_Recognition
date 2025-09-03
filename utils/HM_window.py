@@ -40,6 +40,12 @@ class HM_window:
                         self.gestures.click_mouse(hand_landmarks_results, frame)
                     case "paint":
                         self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT,True)
+                    case "btd4":
+                        self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT,True)
+                    case "chess":
+                        self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT,True)
+                    case "ssp":
+                        self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT,True)
                 # cv2.imshow("capture image", frame)
                 if cv2.waitKey(10) & 0xFF == ord('q'):
                     self.stop()
