@@ -2,8 +2,8 @@
 Name:         gesture.py
 Author:       Alex Kamano, Kilian Testard, Alexandre Ramirez, Nathan Filipowitz et Fabian Rostello
 Date:         03.04.2025
-Version:      0.1
-Description:  Multiple gesture recognition
+Version:      0.3 - Fixed Windows Touch Injection Error 87
+Description:  Multiple gesture recognition with robust error handling
 """
 
 import cv2
@@ -22,6 +22,9 @@ keybd_event = ctypes.windll.user32.keybd_event
 class Gesture:
     def __init__(self):
         # Configuration ctypes pour Windows
+        # self.injector = touch.TouchInjector(max_contacts=10)  # from win_touch.TouchInjector
+        self.finger_id_left = 1
+        self.finger_id_right = 2
         self.user32 = ctypes.windll.user32
         self.SCREEN_WIDTH = self.user32.GetSystemMetrics(0)  # SM_CXSCREEN constant
         self.SCREEN_HEIGHT = self.user32.GetSystemMetrics(1)  # SM_CYSCREEN constant
@@ -54,13 +57,34 @@ class Gesture:
 
         self.detected_hands = set()
 
-        # Initialize variables to track finger state
+        # ENHANCED: Better state management to prevent error 87
+        self.gesture_mode = 'none'  # 'none', 'grab', 'zoom'
+        self.gesture_start_time = 0
+        self.last_gesture_change = 0
+        self.gesture_debounce = 0.1  # 100ms debounce to prevent rapid state changes
+
+        # Enhanced hand tracking
         self.hand_closed = {"Left": False, "Right": False}
         self.last_x = {"Left": None, "Right": None}
         self.last_y = {"Left": None, "Right": None}
         self.current_positions = {"Left": (0, 0), "Right": (0, 0)}
         self.last_gesture_change_time = {"Left": 0, "Right": 0}
         self.debounce_time = 0.2  # seconds
+
+        # Enhanced zoom mode tracking
+        self.zoom_mode = False
+        self.initial_distance = None
+        self.zoom_threshold = 50  # Minimum distance change to trigger zoom
+        self.zoom_center_x = None
+        self.zoom_center_y = None
+        self.last_zoom_distance = None
+        self.zoom_sensitivity = 2.0  # Adjust this to make zoom more/less sensitive
+
+        # CRITICAL: Error tracking and recovery
+        self.consecutive_errors = 0
+        self.max_consecutive_errors = 5
+        self.last_error_time = 0
+        self.error_recovery_delay = 1.0  # 1 second between recovery attempts
 
 
     def initialize_gesture(self):
@@ -76,15 +100,16 @@ class Gesture:
         self.make_click_through()
 
 
-    # Une fonction spéciale pour rendre la fenêtre "click-through"
     def make_click_through(self):
+        """Make window click-through with enhanced error handling"""
         try:
             self.hwnd = ctypes.windll.user32.FindWindowW(None, "Hand Circles")
             self.style = ctypes.windll.user32.GetWindowLongW(self.hwnd, -20)  # GWL_EXSTYLE
             self.style |= 0x00000020 | 0x80000  # WS_EX_TRANSPARENT | WS_EX_LAYERED
             ctypes.windll.user32.SetWindowLongW(self.hwnd, -20, self.style)
             return True
-        except:
+        except Exception as e:
+            print(f"Failed to make window click-through: {e}")
             return False
 
 
@@ -99,19 +124,28 @@ class Gesture:
         # Convertir les coordonnées (0-1) en coordonnées d'écran
         screen_x = int(x * self.SCREEN_WIDTH)
         screen_y = int(y * self.SCREEN_HEIGHT)
-        touch.touchDown(x, y, holdEvents=True)
 
-        # Mettre à jour le temps du dernier clic
-        self.last_click_time[hand_id] = current_time
-        print(f"Clic effectué par la main {hand_id} à ({screen_x}, {screen_y})")
+        # ENHANCED: Use improved touch system
+        success = touch.touchDown(screen_x, screen_y, holdEvents=True, finger=0 if hand_id == "Left" else 1)
+
+        if success:
+            # Mettre à jour le temps du dernier clic
+            self.last_click_time[hand_id] = current_time
+            print(f"Clic effectué par la main {hand_id} à ({screen_x}, {screen_y})")
+        else:
+            print(f"Failed to perform click for {hand_id}")
 
 
     def perform_unclick(self, x, y, hand_id):
-        # # Convertir les coordonnées (0-1) en coordonnées d'écran
+        """Enhanced unclick with error handling"""
         screen_x = int(x * self.SCREEN_WIDTH)
         screen_y = int(y * self.SCREEN_HEIGHT)
-        # sendTouchUp(screen_x, screen_y)
-        print(f"Unclic effectué par la main")
+
+        success = touch.touchUp(screen_x, screen_y, finger=0 if hand_id == "Left" else 1)
+        if success:
+            print(f"Unclic effectué par la main {hand_id}")
+        else:
+            print(f"Failed to perform unclick for {hand_id}")
 
 
     @staticmethod
@@ -120,7 +154,6 @@ class Gesture:
         Détecte si la position de la main correspond à un geste de clic
         (distance entre pouce et index faible)
         """
-
         threshold = 0.2
 
         wrist = np.array([landmarks[0].x, landmarks[0].y, landmarks[0].z])
@@ -132,122 +165,249 @@ class Gesture:
         distance2 = np.linalg.norm(wrist - midfing_tip)
         distance3 = np.linalg.norm(wrist - pinky_tip)
 
-        # print(f"distance1: {distance1}, distance2: {distance2}, distance3: {distance3}")
-
-        return distance1 < threshold and distance2 < threshold and distance3 < threshold   # Seuil de détection
+        return distance1 < threshold and distance2 < threshold and distance3 < threshold
 
 
     def update_circles(self, hand_positions):
-        """Met à jour l'affichage des cercles"""
-        # Effacer le canvas
-        self.canvas.delete("all")
+        """Met à jour l'affichage des cercles avec gestion d'erreur"""
+        try:
+            # Effacer le canvas
+            self.canvas.delete("all")
 
-        # Dessiner les cercles
-        for hand_id, (x, y) in hand_positions.items():
-            radius = 30
+            # Dessiner les cercles
+            for hand_id, (x, y) in hand_positions.items():
+                radius = 30
 
-            # Couleur selon la main
-            color = "#00FF00" if hand_id == "Left" else "#FF0000"
+                # Couleur selon la main
+                color = "#00FF00" if hand_id == "Left" else "#FF0000"
 
-            # Dessiner le cercle avec une transparence
-            self.canvas.create_oval(
-                x - radius,
-                y - radius,
-                x + radius,
-                y + radius,
-                fill=color,
-                stipple="gray50",  # Cela crée un effet de transparence
-                tags = "circles"
-            )
+                # Dessiner le cercle avec une transparence
+                self.canvas.create_oval(
+                    x - radius,
+                    y - radius,
+                    x + radius,
+                    y + radius,
+                    fill=color,
+                    stipple="gray50",  # Cela crée un effet de transparence
+                    tags="circles"
+                )
 
-        # Mettre à jour l'interface
-        self.root.update()
+            # Mettre à jour l'interface
+            self.root.update()
+            self.make_click_through()
+        except Exception as e:
+            print(f"Error updating circles: {e}")
 
-        self.make_click_through()
 
-    def handle_touch_for_hand(self, hand_id, x, y, is_closed):
-        """
-        Handle touch events for a specific hand with improved touch handling
-        """
+    def safe_touch_operation(self, operation, *args, **kwargs):
+        """Wrapper for touch operations with error recovery"""
         current_time = time.time()
-        # Use finger 0 for Left hand, finger 1 for Right hand
-        finger_index = 0 if hand_id == "Left" else 1
 
-        # Check if gesture has changed with debouncing
-        if is_closed != self.hand_closed[hand_id] and (
-                current_time - self.last_gesture_change_time[hand_id]) > self.debounce_time:
-            self.last_gesture_change_time[hand_id] = current_time
+        # Check if we're in error recovery mode
+        if (self.consecutive_errors >= self.max_consecutive_errors and
+            current_time - self.last_error_time < self.error_recovery_delay):
+            return False
 
-            # Update hand state
-            self.hand_closed[hand_id] = is_closed
-
-            if is_closed:
-                print(f"{hand_id} hand: Touch down at {x}, {y}")
-                # With the new library, just specify which finger index to use
-                touch.touchDown(x, y, fingerRadius=5, holdEvents=True, finger=finger_index)
+        try:
+            result = operation(*args, **kwargs)
+            if result:
+                self.consecutive_errors = 0  # Reset error counter on success
+                return True
             else:
-                print(f"{hand_id} hand: Touch up at {x}, {y}")
-                # Just specify which finger index to release
-                touch.touchUp(x, y, fingerRadius=5, finger=finger_index)
+                self.consecutive_errors += 1
+                self.last_error_time = current_time
+                # Don't treat touchUp failures as critical errors if we're cleaning up
+                if operation == touch.touchUp:
+                    print(f"TouchUp operation failed but continuing (non-critical)")
+                    return True  # Consider touchUp "successful" even if it fails
+                return False
+        except Exception as e:
+            print(f"Exception in touch operation: {e}")
+            self.consecutive_errors += 1
+            self.last_error_time = current_time
+            return False
 
-        # If hand is closed and position has changed, simulate move
-        elif is_closed and (self.last_x[hand_id] is None or self.last_y[hand_id] is None or
-                            abs(x - self.last_x[hand_id]) > 5 or abs(y - self.last_y[hand_id]) > 5):
-            print(f"{hand_id} hand: Touch move to {x}, {y}")
-            # Each hand moves its own touch point
-            touch.touchMove(x, y, fingerRadius=5, finger=finger_index)
 
-        # Update last known position
-        self.last_x[hand_id] = x
-        self.last_y[hand_id] = y
+    def emergency_cleanup(self):
+        """Emergency cleanup of all touch contacts"""
+        print("Performing emergency cleanup of touch contacts")
+        try:
+            # Check if fingers are actually in contact before trying to release them
+            for finger in [0, 1]:
+                if touch.finger_in_contact[finger]:
+                    print(f"Releasing stuck finger {finger}")
+                    touch.touchUp(0, 0, finger=finger)
+                else:
+                    print(f"Finger {finger} not in contact, skipping")
 
+                time.sleep(0.02)  # Small delay between releases
+
+            self.gesture_mode = 'none'
+            self.consecutive_errors = 0
+        except Exception as e:
+            print(f"Error during emergency cleanup: {e}")
+            # Force reset the finger states even if cleanup failed
+            touch.finger_in_contact[0] = False
+            touch.finger_in_contact[1] = False
+            self.gesture_mode = 'none'
 
     def touchscreen_mode(self, landmarks, mp_drawing, mp_hands, frame, has_cursor):
-        # Dictionnaire pour stocker les positions des mains
-        hand_positions = {}
+        """Touchscreen mode with gesture state machine (grab + zoom) and error prevention."""
+        print("Touchscreen mode active")
+        current_time = time.time()
+        hand_info = {}
 
+        # Emergency recovery if too many errors
+        if self.consecutive_errors >= self.max_consecutive_errors:
+            if current_time - self.last_error_time > self.error_recovery_delay:
+                self.emergency_cleanup()
+            return self.root
+
+        # --- Process hands from Mediapipe ---
         if landmarks.multi_hand_landmarks:
             for idx, hand_landmarks in enumerate(landmarks.multi_hand_landmarks):
-                # Déterminer s'il s'agit de la main gauche ou droite
-                if landmarks.multi_handedness:
-                    hand_id = landmarks.multi_handedness[idx].classification[0].label
-                else:
-                    hand_id = "Left" if idx == 0 else "Right"
+                hand_id = landmarks.multi_handedness[idx].classification[0].label
+                is_closed = self.is_fingers_closed(hand_landmarks.landmark)
 
-                # self.detected_hands.add(hand_id)
+                palm = hand_landmarks.landmark[0]
+                x = int(palm.x * self.SCREEN_WIDTH * 1.2 - 0.1 * self.SCREEN_WIDTH)
+                y = int(palm.y * self.SCREEN_HEIGHT * 1.2 - 0.1 * self.SCREEN_HEIGHT)
 
-                # Dessiner les repères de la main
-                # mp_drawing.draw_landmarks(
-                #     frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+                # Keep inside bounds
+                x = max(0, min(x, self.SCREEN_WIDTH - 1))
+                y = max(0, min(y, self.SCREEN_HEIGHT - 1))
 
-                # Vérifier le geste de clic
-                is_clicking = self.is_fingers_closed(hand_landmarks.landmark)
+                hand_info[hand_id] = {"pos": (x, y), "closed": is_closed}
 
-                # Obtenir la position de l'index (repère 8)
-                palm_hand = hand_landmarks.landmark[0]
-
-                screen_x = int(palm_hand.x * self.SCREEN_WIDTH * 1.2 - 0.1 * self.SCREEN_WIDTH)     # Add marging on borders
-                screen_y = int(palm_hand.y * self.SCREEN_HEIGHT * 1.2 - 0.1 * self.SCREEN_HEIGHT)
-
-                # Afficher l'état de la main
-                cv2.putText(frame, f"Main {hand_id}: {'Clic' if is_clicking else 'Repos'}",
+                # Debug display
+                cv2.putText(frame, f"{hand_id}: {'Closed' if is_closed else 'Open'}",
                             (10, 30 + idx * 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-                self.handle_touch_for_hand(hand_id, screen_x, screen_y, is_clicking)
+        # --- Gesture State Machine ---
+        num_closed = sum(1 for h in hand_info.values() if h["closed"])
+        closed_hands = [h for h, info in hand_info.items() if info["closed"]]
 
-                if has_cursor:
-                    pass
+        # Debounce: prevent rapid mode switching
+        if current_time - self.last_gesture_change < self.gesture_debounce:
+            self.update_circles({h: info["pos"] for h, info in hand_info.items()})
+            return self.root
 
-                # Stocker la position de la main
-                hand_positions[hand_id] = (screen_x, screen_y)
+        # --- ZOOM MODE (both hands closed) ---
+        if num_closed == 2:
+            left_pos = hand_info["Left"]["pos"]
+            right_pos = hand_info["Right"]["pos"]
 
+            if self.gesture_mode != "zoom":
+                if self.gesture_mode == "grab":
+                    # Upgrade grab → zoom (keep first finger alive)
+                    print("Upgrading Grab → Zoom")
 
-            # Mettre à jour l'affichage des cercles
-            self.update_circles(hand_positions)
+                    grab_hand = closed_hands[0]
+                    grab_finger = 0 if grab_hand == "Left" else 1
 
-        # Afficher l'image de la caméra
-        # cv2.imshow('MediaPipe Hands', frame)
+                    # The other hand is the new one to add
+                    other_hand = "Right" if grab_hand == "Left" else "Left"
+                    other_finger = 1 - grab_finger
+                    other_pos = hand_info[other_hand]["pos"]
 
+                    # Just add the second finger (no cleanup on the first)
+                    ok2 = False
+                    for attempt in range(3):
+                        ok2 = self.safe_touch_operation(
+                            touch.touchDown, *other_pos, finger=other_finger, fingerRadius=5, holdEvents=True
+                        )
+                        if ok2:
+                            break
+                        time.sleep(0.05)
+
+                    if ok2:
+                        self.gesture_mode = "zoom"
+                        self.last_gesture_change = current_time
+                        print("Zoom started correctly 🎉")
+                    else:
+                        print("Failed to add second finger for zoom")
+                        self.gesture_mode = "grab"  # fallback to grab
+
+                else:
+                    # Idle → Zoom: start both fingers fresh
+                    print(">>> Entering Zoom Mode fresh")
+                    self.safe_touch_operation(touch.touchUp, *left_pos, finger=0)
+                    self.safe_touch_operation(touch.touchUp, *right_pos, finger=1)
+                    time.sleep(0.05)
+
+                    ok1 = self.safe_touch_operation(
+                        touch.touchDown, *left_pos, finger=0, fingerRadius=5, holdEvents=True
+                    )
+                    time.sleep(0.05)
+                    ok2 = self.safe_touch_operation(
+                        touch.touchDown, *right_pos, finger=1, fingerRadius=5, holdEvents=True
+                    )
+
+                    if ok1 and ok2:
+                        self.gesture_mode = "zoom"
+                        self.last_gesture_change = current_time
+                        print("Zoom started correctly 🎉")
+                    else:
+                        print("Zoom start failed")
+                        self.gesture_mode = "none"
+
+            else:
+                # Already in zoom: update both positions
+                if not self.safe_touch_operation(touch.touchMove, *left_pos, finger=0, fingerRadius=5):
+                    print("Zoom update error (Left)")
+                    self.emergency_cleanup()
+                if not self.safe_touch_operation(touch.touchMove, *right_pos, finger=1, fingerRadius=5):
+                    print("Zoom update error (Right)")
+                    self.emergency_cleanup()
+
+        # --- GRAB MODE (exactly one hand closed) ---
+        elif num_closed == 1:
+            hand_id = closed_hands[0]
+            pos = hand_info[hand_id]["pos"]
+            finger = 0 if hand_id == "Left" else 1
+
+            if self.gesture_mode != "grab":
+                print(f">>> Entering Grab Mode ({hand_id})")
+
+                # Cleanup previous state
+                self.safe_touch_operation(touch.touchUp, *pos, finger=1 - finger)
+                if self.gesture_mode == "zoom":
+                    self.safe_touch_operation(touch.touchUp, *pos, finger=0)
+                    self.safe_touch_operation(touch.touchUp, *pos, finger=1)
+
+                success = self.safe_touch_operation(touch.touchDown, *pos, fingerRadius=5, holdEvents=True,
+                                                    finger=finger)
+                if success:
+                    self.gesture_mode = "grab"
+                    self.last_gesture_change = current_time
+                else:
+                    print("Grab start failed")
+                    self.gesture_mode = "none"
+            else:
+                # Continue grab
+                if not self.safe_touch_operation(touch.touchMove, *pos, fingerRadius=5, finger=finger):
+                    print("Grab update error")
+                    self.emergency_cleanup()
+
+        # --- IDLE MODE (no hands closed) ---
+        else:
+            if self.gesture_mode != "none":
+                print(f">>> Exiting {self.gesture_mode} Mode")
+                self.safe_touch_operation(touch.touchUp, 0, 0, finger=0)
+                self.safe_touch_operation(touch.touchUp, 0, 0, finger=1)
+                self.gesture_mode = "none"
+                self.last_gesture_change = current_time
+
+        # --- Cursor Movement ---
+        print("Has cursor:", has_cursor)
+        if has_cursor and "Right" in hand_info:
+            if current_time - self.previous_time > 0.008:
+                x, y = hand_info["Right"]["pos"]
+                ctypes.windll.user32.SetCursorPos(x, y)
+                self.previous_time = current_time
+
+        # --- UI Overlay ---
+        self.update_circles({h: info["pos"] for h, info in hand_info.items()})
         return self.root
 
     def click_mouse(self, landmarks, frame):
@@ -314,85 +474,57 @@ class Gesture:
                     ctypes.windll.user32.SetCursorPos(int(screen_x), int(screen_y))
                     self.previous_time = current_time
 
-
-
-
-
-    def driving_wheel(self, results, original_image):
+    def driving_wheel(self, landmarks, original_image):
         imgH, imgW, imgC = original_image.shape
         mid_y_up = imgH // 2 + 50
         mid_y_down = imgH // 2 - 50
 
-        if results.multi_hand_landmarks:
-            for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
-                # Identification de la main (Left / Right)
-                if results.multi_handedness:
-                    hand_id = results.multi_handedness[idx].classification[0].label
+        if landmarks.multi_hand_landmarks:
+            #continual forward input when a hand is detected
+            keybd_event(0x57, 0, 0, 0)
+            print("W")
+
+            for idx, hand_landmarks in enumerate(landmarks.multi_hand_landmarks):
+                # get the index fingertip y position
+                index_y_pos = hand_landmarks.landmark[8].y * imgH
+
+                # if index fingertip is higher, unpress D and press A
+                if index_y_pos < mid_y_down:
+                    keybd_event(0x41, 0, 0, 0)
+                    keybd_event(0x44, 0, 2, 0)
+                    print("A")
+                # if index fingertip is lower, unpress A and press D
+                elif index_y_pos > mid_y_up:
+                    keybd_event(0x44, 0, 0, 0)
+                    keybd_event(0x41, 0, 2, 0)
+                    print("D")
                 else:
-                    hand_id = "Left" if idx == 0 else "Right"
-
-                if hand_id == "right":
-                    # get the index fingertip y position
-                    index_y_pos = hand_landmarks.landmark[8].y * imgH
-
-                    # if index fingertip is higher, unpress D and press A
-                    if index_y_pos < mid_y_down:
-                        keybd_event(0x41, 0, 2, 0)
-                        keybd_event(0x44, 0, 0, 0)
-                        print("A")
-                    # if index fingertip is lower, unpress A and press D
-                    elif index_y_pos > mid_y_up:
-                        keybd_event(0x44, 0, 2, 0)
-                        keybd_event(0x41, 0, 0, 0)
-                        print("D")
-                    else:
-                        # if index fingertip is in the neutral area, unpress both A and D
-                        keybd_event(0x41, 0, 2, 0)
-                        keybd_event(0x44, 0, 2, 0)
-                        print("Zone grise")
+                    # if index fingertip is in the neutral area, unpress both A and D
+                    keybd_event(0x41, 0, 2, 0)
+                    keybd_event(0x44, 0, 2, 0)
+                    print("Zone grise")
         else:
             # if no hand is detected, unpress every key
             keybd_event(0x57, 0, 2, 0)
             keybd_event(0x41, 0, 2, 0)
             keybd_event(0x44, 0, 2, 0)
 
-
-
-
     # function defining when a finger is folded via the y position of the tip and middle joint
     def finger_folded(self, landmarks, tip_id, mid_id):
         return landmarks[tip_id].y > landmarks[mid_id].y
 
-    # function to detect if the index is extended and the other fingers are folded
-    def index_only_extended(self, landmarks):
-        index_extended = landmarks[8].y < landmarks[6].y
-        others_folded = (
+    # function to detect if the other fingers are folded
+    def is_index_only_extended(self, landmarks):
+        other_folded = (
                 self.finger_folded(landmarks, 12, 10) and
                 self.finger_folded(landmarks, 16, 14) and
                 self.finger_folded(landmarks, 20, 18)
         )
-        return index_extended and others_folded
+        return other_folded
 
-
-    # function to detect if all the fingers are extended
-    def all_fingers_up(self, landmarks):
-        all_fingers_up = (
-            landmarks[8].y < landmarks[6].y and
-            landmarks[12].y < landmarks[10].y and
-            landmarks[16].y < landmarks[14].y and
-            landmarks[20].y < landmarks[18].y
-        )
-        return all_fingers_up
-
-    def all_fingers_folded(self, landmarks):
-        all_fingers_folded = (
-            self.finger_folded(landmarks, 8, 6) and
-            self.finger_folded(landmarks, 12, 10) and
-            self.finger_folded(landmarks, 16, 14) and
-            self.finger_folded(landmarks, 20, 18)
-        )
-        return all_fingers_folded
-
+    def index_up(self, landmarks):
+        if landmarks[8].y < landmarks[6].y:
+            return "up"
 
     # function to unpress the W, S UP and DOWN keys
     def unpress_keys(self):
@@ -401,50 +533,37 @@ class Gesture:
         keybd_event(0x26, 0, 2, 0)
         keybd_event(0x28, 0, 2, 0)
 
-
-    # used ChatGPT to resolve a confusion with the results object of Mediapipe
-    def pong(self, results):
-        if results.multi_hand_landmarks:
-            for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
-                landmarks = hand_landmarks.landmark
-
-                # Identification de la main (Left / Right)
-                if results.multi_handedness:
-                    hand_id = results.multi_handedness[idx].classification[0].label
+    def pong(self, landmarks):
+        if landmarks.multi_hand_landmarks:
+            for idx, hand_landmarks in enumerate(landmarks.multi_hand_landmarks):
+                if landmarks.multi_handedness:
+                    hand_id = landmarks.multi_handedness[idx].classification[0].label
                 else:
                     hand_id = "Left" if idx == 0 else "Right"
-
-                only_index_up = self.index_only_extended(landmarks)
-                all_fingers_up = self.all_fingers_up(landmarks)
-                all_fingers_folded = self.all_fingers_folded(landmarks)
-
-                if hand_id == "Left":
-                    if only_index_up:
-                        keybd_event(0x57, 0, 0, 0)
-                        keybd_event(0x53, 0, 2, 0)
-                        print("Index up → W")
-                    elif all_fingers_up:
-                        keybd_event(0x53, 0, 2, 0)
-                        keybd_event(0x57, 0, 2, 0)
-                        print("Stand still")
-                    elif all_fingers_folded:
-                        keybd_event(0x53, 0, 0, 0)
-                        keybd_event(0x57, 0, 2, 0)
-                        print("Index down → S")
-                elif hand_id == "Right":
-                    if only_index_up:
-                        keybd_event(0x26, 0, 0, 0)
-                        keybd_event(0x28, 0, 2, 0)
-                        print("Index up → UP")
-                    elif all_fingers_up:
-                        keybd_event(0x26, 0, 2, 0)
-                        keybd_event(0x28, 0, 2, 0)
-                        print("Stand still")
-                    elif all_fingers_folded:
-                        keybd_event(0x28, 0, 0, 0)
-                        keybd_event(0x26, 0, 2, 0)
-                        print("Index down → DOWN")
+                if self.is_index_only_extended(hand_landmarks.landmark):
+                    indexUp = self.index_up(hand_landmarks.landmark)
+                    if hand_id == "Left":
+                        if indexUp == "up":
+                            keybd_event(0x57, 0, 0, 0)
+                            keybd_event(0x53, 0, 2, 0)
+                            print("Index up → W")
+                        else:
+                            keybd_event(0x53, 0, 0, 0)
+                            keybd_event(0x57, 0, 2, 0)
+                            print("Index down → S")
+                    elif hand_id == "Right":
+                        if indexUp == "up":
+                            keybd_event(0x26, 0, 0, 0)
+                            keybd_event(0x28, 0, 2, 0)
+                            print("Index up → UP")
+                        else:
+                            keybd_event(0x28, 0, 0, 0)
+                            keybd_event(0x26, 0, 2, 0)
+                            print("Index down → DOWN")
 
                 else:
                     self.unpress_keys()
-                    print("no hand detected → stop")
+                    print("unknown gesture → stop")
+        else:
+            self.unpress_keys()
+            print("no hand detected → stop")
