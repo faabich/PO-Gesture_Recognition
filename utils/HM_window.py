@@ -15,7 +15,7 @@ class HM_window:
     def __init__(self, width, height):
         self.CAMERA_WIDTH = width
         self.CAMERA_HEIGHT = height
-        self.cap = VideoCamera(self.CAMERA_WIDTH, self.CAMERA_HEIGHT)
+        self.cap = None # Defer camera initialization to secondary thread
         self.hand_detector = HandDetector()
         self.gestures = Gesture()
         self.running = True
@@ -23,6 +23,12 @@ class HM_window:
     def run(self, parameter=None):
         print("HM_window started")
         print("Attempting to read from camera...")
+        try:
+            self.cap = VideoCamera(self.CAMERA_WIDTH, self.CAMERA_HEIGHT)
+            print("Camera initialized successfully")
+        except RuntimeError as e:
+            print(f"Failed to initialize camera: {e}")
+            return  # Exit the thread if camera fails
         while self.running:
             success, frame = self.cap.read()
             # print(f"Camera read success: {success}")
