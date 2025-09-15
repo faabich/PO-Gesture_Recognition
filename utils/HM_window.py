@@ -11,7 +11,6 @@ from utils.camera import VideoCamera
 from utils.gesture import Gesture
 from PIL import Image, ImageTk
 from utils.common import *
-import customtkinter as ctk
 import cv2
 import time
 import threading
@@ -24,7 +23,7 @@ class HM_window:
         self.hand_detector = HandDetector(max_num_hands=num_hands)
         self.gestures = Gesture(canvas=canvas)
         self._stop_event = threading.Event()
-        self.mode = (mode or "").lower().strip()
+        self.mode = (mode or "").replace('-', ' ').lower().strip()
         self.app = app
         self.label = None
 
@@ -68,16 +67,11 @@ class HM_window:
                 case "paint" | "btd4" | "chess" | "ssp":
                     self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT, True)
 
-            if self.label and self.app:
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                img = Image.fromarray(frame_rgb)
-                img = img.resize((self.CAMERA_WIDTH // 2, self.CAMERA_HEIGHT // 2), Image.Resampling.LANCZOS)
-                imgtk = ImageTk.PhotoImage(image=img)
-                self.app.after(0, lambda: self.label.configure(image=imgtk))
-                self.label.image = imgtk
+            cv2.imshow("Camera Feed", frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                self.stop()
 
             processing_time = time.time() - start_time
-            print(f"Frame processing time: {processing_time:.3f} seconds")
             time.sleep(max(0.01, 0.033 - processing_time))  # Target ~30 FPS
 
         self._cleanup()
@@ -87,6 +81,7 @@ class HM_window:
         if self.cap is not None:
             try:
                 self.cap.release()
+                cv2.destroyAllWindows()
             except Exception as e:
                 print(f"Error releasing camera: {e}")
             self.cap = None

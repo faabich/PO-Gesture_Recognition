@@ -5,17 +5,22 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="42de9183-1cc3-474e-961d-61e0a4dccd9e" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/utils/common.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/utils/HM_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/HM_window.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/custom_demo_browser.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/custom_demo_browser.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/gesture.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/gesture.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/hand_detector.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/hand_detector.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/common.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/common.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
@@ -48,6 +53,7 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.main.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",

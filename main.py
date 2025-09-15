@@ -132,38 +132,10 @@ launch_button = ctk.CTkButton(
 )
 launch_button.grid(row=3, column=1, columnspan=2, padx=10, pady=10)
 
-def test_camera_and_hand_detection(width, height, num_hands=1):
-    try:
-        cap = VideoCamera(width, height)
-        detector = HandDetector(max_num_hands=num_hands)
-        start_time = time.time()
-        success, frame = cap.read()
-        if not success:
-            print("Camera test failed: Could not read frame")
-            cap.release()
-            return
-        frame = cv2.flip(frame, 1)
-        results, _, _ = detector.get_hand_landmarks(frame)
-        processing_time = time.time() - start_time
-        print(f"Camera and hand detection test successful, processed frame in {processing_time:.3f} seconds")
-        if results.multi_hand_landmarks:
-            print(f"Detected {len(results.multi_hand_landmarks)} hand(s)")
-        else:
-            print("No hands detected")
-        cap.release()
-    except Exception as e:
-        print(f"Camera/hand detection test failed: {e}")
-
-test_button = ctk.CTkButton(
-    app,
-    text="Test Camera & Hand Detection",
-    command=lambda: test_camera_and_hand_detection(cam_width, cam_height, int(spinbox.get()))
-)
-test_button.grid(row=4, column=2, padx=10, pady=10)
 
 # Ensure canvas is below other widgets after all are created
 app.update()  # Update the window to ensure all widgets are rendered
-canvas.lower()  # Lower the canvas relative to other widgets
+app.lower(canvas)  # Lower the canvas relative to other widgets
 
 app.geometry(f"{width}x{height}")
 app.mainloop()
