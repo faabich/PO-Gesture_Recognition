@@ -1,24 +1,44 @@
-import ctypes
-import ctypes.wintypes
-import _thread as thread
 import time
-import threading
+from ctypes import (
+    Array,
+    FormatError,
+    Structure,
+    byref,
+    c_int,
+    c_int32,
+    c_uint32,
+    c_uint64,
+    windll,
+)
+from ctypes.wintypes import DWORD, HANDLE, HWND, POINT, RECT
+from dataclasses import dataclass, field, fields
+from threading import Lock
+from typing import ClassVar, List, Type
 
-# Touch input constants
-TOUCH_MASK_NONE = 0x00000000
+# Constants
+# For init
+TOUCH_FEEDBACK_DEFAULT = 0x00000001
+TOUCH_FEEDBACK_INDIRECT = 0x00000002
+TOUCH_FEEDBACK_NONE = 0x00000003
+
+# For touchMask
+TOUCH_MASK_NONE = 0x00000000  # Default
 TOUCH_MASK_CONTACTAREA = 0x00000001
 TOUCH_MASK_ORIENTATION = 0x00000002
 TOUCH_MASK_PRESSURE = 0x00000004
 TOUCH_MASK_ALL = 0x00000007
 
+# For touchFlag
 TOUCH_FLAG_NONE = 0x00000000
 
-PT_POINTER = 0x00000001
+# For pointerType
+PT_POINTER = 0x00000001  # All
 PT_TOUCH = 0x00000002
 PT_PEN = 0x00000003
 PT_MOUSE = 0x00000004
 
-POINTER_FLAG_NONE = 0x00000000
+# For pointerFlags
+POINTER_FLAG_NONE = 0x00000000  # Default
 POINTER_FLAG_NEW = 0x00000001
 POINTER_FLAG_INRANGE = 0x00000002
 POINTER_FLAG_INCONTACT = 0x00000004
@@ -37,271 +57,304 @@ POINTER_FLAG_WHEEL = 0x00080000
 POINTER_FLAG_HWHEEL = 0x00100000
 POINTER_FLAG_CAPTURECHANGED = 0x00200000
 
-
-class POINTER_INFO(ctypes.Structure):
-    _fields_ = [("pointerType", ctypes.c_uint32),
-                ("pointerId", ctypes.c_uint32),
-                ("frameId", ctypes.c_uint32),
-                ("pointerFlags", ctypes.c_int),
-                ("sourceDevice", ctypes.wintypes.HANDLE),
-                ("hwndTarget", ctypes.wintypes.HWND),
-                ("ptPixelLocation", ctypes.wintypes.POINT),
-                ("ptHimetricLocation", ctypes.wintypes.POINT),
-                ("ptPixelLocationRaw", ctypes.wintypes.POINT),
-                ("ptHimetricLocationRaw", ctypes.wintypes.POINT),
-                ("dwTime", ctypes.c_ulong),
-                ("historyCount", ctypes.c_uint32),
-                ("inputData", ctypes.c_int32),
-                ("dwKeyStates", ctypes.c_ulong),
-                ("PerformanceCount", ctypes.c_uint64),
-                ("ButtonChangeType", ctypes.c_int)
-                ]
+# Default values
+MAX_TOUCHES = 256
+FINGER_RADIUS = 20
+ORIENTATION = 90
+PRESSURE = 32000
+DELAY = 0.05
 
 
-class POINTER_TOUCH_INFO(ctypes.Structure):
-    _fields_ = [("pointerInfo", POINTER_INFO),
-                ("touchFlags", ctypes.c_int),
-                ("touchMask", ctypes.c_int),
-                ("rcContact", ctypes.wintypes.RECT),
-                ("rcContactRaw", ctypes.wintypes.RECT),
-                ("orientation", ctypes.c_uint32),
-                ("pressure", ctypes.c_uint32)]
+def structure(cls: Type):
+    """
+    Decorator to generate `_fields_` attribute for dataclasses.
+
+    Args:
+        cls (Type): Class to decorate. Should be a dataclass and inherit from `ctypes.Structure`.
+    """
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({', '.join(f'{field.name}={getattr(self, field.name)!r}' for field in fields(self))})"
+
+    cls._fields_ = [(field.name, field.type) for field in fields(cls)]
+    cls.__repr__ = __repr__  # type: ignore
+    return cls
 
 
-# Initialize Pointer and Touch info for two fingers
-touchInfoArray = (POINTER_TOUCH_INFO * 2)()
+# Structs Needed
+@structure
+@dataclass
+class POINTER_INFO(Structure):
+    """
+    Object for C struct `POINTER_INFO`.
 
-# Use a better lock mechanism
-touchInfoLock = threading.RLock()
+    See:
+        https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-pointer_info
+    """
 
-# Track if each finger is currently in contact
-finger_in_contact = [False, False]
+    pointerType: c_uint32 = field(default_factory=c_uint32)
+    pointerId: c_uint32 = field(default_factory=c_uint32)
+    frameId: c_uint32 = field(default_factory=c_uint32)
+    pointerFlags: c_int = field(default_factory=c_int)
+    sourceDevice: HANDLE = field(default_factory=HANDLE)
+    hwndTarget: HWND = field(default_factory=HWND)
+    ptPixelLocation: POINT = field(default_factory=POINT)
+    ptHimetricLocation: POINT = field(default_factory=POINT)
+    ptPixelLocationRaw: POINT = field(default_factory=POINT)
+    ptHimetricLocationRaw: POINT = field(default_factory=POINT)
+    dwTime: DWORD = field(default_factory=DWORD)
+    historyCount: c_uint32 = field(default_factory=c_uint32)
+    inputData: c_int32 = field(default_factory=c_int32)
+    dwKeyStates: DWORD = field(default_factory=DWORD)
+    PerformanceCount: c_uint64 = field(default_factory=c_uint64)
+    ButtonChangeType: c_int = field(default_factory=c_int)
 
-# Track hold threads for proper cleanup
-hold_threads = [None, None]
-hold_thread_exit_flags = [False, False]
+
+@structure
+@dataclass
+class POINTER_TOUCH_INFO(Structure):
+    """
+    Object for C struct `POINTER_TOUCH_INFO`.
+
+    See:
+        https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-pointer_touch_info
+    """
+
+    pointerInfo: POINTER_INFO = field(default_factory=POINTER_INFO)
+    touchFlags: c_int = field(default_factory=c_int)
+    touchMask: c_int = field(default_factory=c_int)
+    rcContact: RECT = field(default_factory=RECT)
+    rcContactRaw: RECT = field(default_factory=RECT)
+    orientation: c_uint32 = field(default_factory=c_uint32)
+    pressure: c_uint32 = field(default_factory=c_uint32)
 
 
-def initialize_touch():
-    """Initialize touch injection, returns True on success, False on failure"""
-    try:
-        if (ctypes.windll.user32.InitializeTouchInjection(2, 1) != 0):
-            print("Touch injection initialized successfully with 2 touch points")
-            # Initialize the touch info structures
-            for i in range(2):
-                touchInfoArray[i].pointerInfo = POINTER_INFO(
-                    pointerType=PT_TOUCH,
-                    pointerId=i,
-                    ptPixelLocation=ctypes.wintypes.POINT(0, 0)
-                )
-                touchInfoArray[i].touchFlags = TOUCH_FLAG_NONE
-                touchInfoArray[i].touchMask = TOUCH_MASK_ALL
-                touchInfoArray[i].rcContact = ctypes.wintypes.RECT(0, 0, 0, 0)
-                touchInfoArray[i].orientation = 90
-                touchInfoArray[i].pressure = 32000
-            return True
+class TouchError(Exception):
+    """
+    Exception for touch errors.
+    """
+
+    pass
+
+
+@dataclass
+class TouchItem:
+    """
+    Class to represent a touch item. Should be managed by a `TouchManager`.
+    """
+
+    touch_info: POINTER_TOUCH_INFO
+    x: int
+    y: int
+    enabled: bool
+
+    DOWN_STATE: ClassVar[int] = (
+        POINTER_FLAG_DOWN | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT
+    )
+
+    UPDATE_STATE: ClassVar[int] = (
+        POINTER_FLAG_UPDATE | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT
+    )
+
+    def __init__(self, id: int):
+        self.x = 0
+        self.y = 0
+        self.enabled = False
+
+        self.touch_info = POINTER_TOUCH_INFO(
+            pointerInfo=POINTER_INFO(
+                pointerType=c_uint32(PT_TOUCH),
+                pointerId=c_uint32(id),
+            ),
+            touchFlags=c_int(TOUCH_FLAG_NONE),
+            touchMask=c_int(TOUCH_MASK_ALL),
+            orientation=c_uint32(ORIENTATION),
+            pressure=c_uint32(PRESSURE),
+        )
+
+    def __set_touch_point(self, x: int, y: int):
+        """
+        Internal method to set the touch point to the given coordinates.
+
+        Args:
+            x (int): X coordinate.
+            y (int): Y coordinate.
+        """
+
+        self.touch_info.pointerInfo.ptPixelLocation.x = x
+        self.touch_info.pointerInfo.ptPixelLocation.y = y
+
+        self.touch_info.rcContact.top = y - FINGER_RADIUS
+        self.touch_info.rcContact.bottom = y + FINGER_RADIUS
+        self.touch_info.rcContact.left = x - FINGER_RADIUS
+        self.touch_info.rcContact.right = x + FINGER_RADIUS
+
+        self.x = x
+        self.y = y
+
+    def down(self, x: int, y: int):
+        """
+        Set the touch point to the given coordinates and set the touch state to down.
+
+        Args:
+            x (int): X coordinate.
+            y (int): Y coordinate.
+        """
+
+        self.__set_touch_point(x, y)
+        self.touch_info.pointerInfo.pointerFlags = c_int(TouchItem.DOWN_STATE)
+        self.enabled = True
+
+    def move(self, x: int, y: int):
+        """
+        Move a touch point which is already down to the given coordinates.
+
+        Args:
+            x (int): X coordinate.
+            y (int): Y coordinate.
+        """
+
+        self.__set_touch_point(x, y)
+        self.touch_info.pointerInfo.pointerFlags = c_int(TouchItem.UPDATE_STATE)
+
+    def up(self):
+        """
+        Set the touch state to up.
+        """
+
+        self.__set_touch_point(self.x, self.y)
+        self.touch_info.pointerInfo.pointerFlags = c_int(POINTER_FLAG_UP)
+
+    def update(self):
+        """
+        Update the touch state to the next state.
+        """
+
+        p_info = self.touch_info.pointerInfo
+        if p_info.pointerFlags == TouchItem.DOWN_STATE:
+            p_info.pointerFlags = c_int(TouchItem.UPDATE_STATE)
+        elif p_info.pointerFlags == POINTER_FLAG_UP:
+            self.enabled = False
+
+
+class TouchManager:
+    """
+    Class to manage touch points.
+    """
+
+    touches: List[TouchItem]
+    touch_infos: Array
+    lock: Lock
+
+    def __init__(self, max_touches: int):
+        if max_touches > MAX_TOUCHES:
+            raise TouchError("Maximum number of touches cannot exceed 256.")
+
+        self.running = False
+        self.touches = []
+        self.lock = Lock()
+        self.touch_infos = (POINTER_TOUCH_INFO * max_touches)()
+        for i in range(max_touches):
+            self.touches.append(TouchItem(i))
+
+        if (
+            windll.user32.InitializeTouchInjection(
+                len(self.touches), TOUCH_FEEDBACK_DEFAULT
+            )
+            == 0
+        ):
+            raise TouchError("Failed to initialize touch injection.")
+
+    def down(self, id: int, x: int, y: int):
+        """
+        Set a touch point to the given coordinates and set the touch state to down.
+
+        Args:
+            id (int): Touch point ID.
+            x (int): X coordinate.
+            y (int): Y coordinate.
+        """
+
+        if id >= len(self.touches):
+            raise TouchError("Touch ID out of range.")
+
+        with self.lock:
+            self.touches[id].down(x, y)
+
+    def move(self, id: int, x: int, y: int):
+        """
+        Move a touch point which is already down to the given coordinates.
+
+        Args:
+            id (int): Touch point ID.
+            x (int): X coordinate.
+            y (int): Y coordinate.
+        """
+
+        if id >= len(self.touches):
+            raise TouchError("Touch ID out of range.")
+
+        with self.lock:
+            self.touches[id].move(x, y)
+
+    def press(self, id: int, x: int, y: int):
+        """
+        Higher wrapper for `down` and `move`.
+
+        Args:
+            id (int): Touch point ID.
+            x (int): X coordinate.
+            y (int): Y coordinate.
+        """
+
+        if id >= len(self.touches):
+            raise TouchError("Touch ID out of range.")
+
+        touch = self.touches[id]
+        if touch.enabled:
+            touch.move(x, y)
         else:
-            print("Touch injection initialization failed")
-            return False
-    except Exception as e:
-        print(f"Error initializing touch injection: {e}")
-        return False
+            touch.down(x, y)
 
+    def up(self, id: int):
+        """
+        Set a touch point to up.
 
-# Global variable to track initialization state
-_g_touchInjenctionInitialized = False
+        Args:
+            id (int): Touch point ID.
+        """
 
+        if id >= len(self.touches):
+            raise TouchError("Touch ID out of range.")
 
-def setTouchCoords(x, y, fingerRadius=5, finger=0):
-    """Set coordinates for a specific finger"""
-    if finger < 0 or finger > 1:
-        raise ValueError(f"Invalid finger number: {finger}, expected 0 or 1")
+        with self.lock:
+            self.touches[id].up()
 
-    with touchInfoLock:
-        ti = touchInfoArray[finger]
-        ti.pointerInfo.ptPixelLocation.x = x
-        ti.pointerInfo.ptPixelLocation.y = y
+    def apply_touches(self):
+        """
+        Apply all touch points to OS.
+        """
 
-        ti.rcContact.left = x - fingerRadius
-        ti.rcContact.right = x + fingerRadius
-        ti.rcContact.top = y - fingerRadius
-        ti.rcContact.bottom = y + fingerRadius
+        with self.lock:
+            touches: List[TouchItem] = []
 
+            for touch in self.touches:
+                if touch.enabled:
+                    self.touch_infos[len(touches)] = touch.touch_info
+                    touches.append(touch)
 
-def _sendTouch(pointerFlags, finger, errorWhen="doTouch"):
-    """
-    Send touch event for a specific finger
-    """
-    if finger < 0 or finger > 1:
-        raise ValueError(f"Invalid finger number: {finger}, expected 0 or 1")
+            if len(touches) > 0:
+                if (
+                    windll.user32.InjectTouchInput(
+                        len(touches), byref(self.touch_infos[0])
+                    )
+                    == 0
+                ):
+                    for touch_info in self.touch_infos[: len(touches)]:
+                        print(touch_info)
+                    raise TouchError(
+                        f"Failed trying to update {len(touches)} points with Error: {FormatError()}"
+                    )
 
-    with touchInfoLock:
-        # Set the flags for the finger
-        touchInfoArray[finger].pointerInfo.pointerFlags = pointerFlags
-
-        try:
-            # Send just this finger's touch info
-            success = ctypes.windll.user32.InjectTouchInput(1, ctypes.byref(touchInfoArray[finger]))
-        except AttributeError:
-            raise NotImplementedError("This Windows version does not support touch injection")
-
-        if success == 0:
-            err = ctypes.GetLastError()
-            print(f"Touch injection failed during {errorWhen}: {err}")
-            return False
-        return True
-
-
-def _touchHold(finger):
-    """Thread function to keep a touch point active"""
-    thread_id = thread.get_ident()
-    print(f"Hold thread started for finger {finger}, thread ID: {thread_id}")
-
-    update_interval = 0.25  # seconds
-
-    while not hold_thread_exit_flags[finger]:
-        # Check if the finger is still in contact
-        with touchInfoLock:
-            if not finger_in_contact[finger]:
-                break
-
-            # Send update to keep the touch active
-            flags = POINTER_FLAG_UPDATE | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT
-            success = _sendTouch(flags, finger, "_touchHold")
-
-            if not success:
-                break
-
-        # Sleep outside the lock to avoid holding it
-        time.sleep(update_interval)
-
-    print(f"Hold thread exiting for finger {finger}, thread ID: {thread_id}")
-    hold_threads[finger] = None
-
-
-def touchDown(x, y, fingerRadius=5, holdEvents=True, finger=0):
-    """Send a touch down event"""
-    with touchInfoLock:
-        # If there's an existing hold thread for this finger, stop it
-        if hold_threads[finger] is not None:
-            hold_thread_exit_flags[finger] = True
-            # Don't join - just let it exit on its own
-
-        # Reset the exit flag for a new thread
-        hold_thread_exit_flags[finger] = False
-
-        # Set coordinates and do the touch down
-        setTouchCoords(x, y, fingerRadius, finger)
-        ok = _sendTouch(POINTER_FLAG_DOWN | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT,
-                        finger, "touchDown")
-
-        if not ok:
-            return False
-
-        # Mark this finger as in contact
-        finger_in_contact[finger] = True
-
-        # Start a hold thread if requested
-        if holdEvents:
-            hold_threads[finger] = thread.start_new_thread(_touchHold, (finger,))
-
-        return True
-
-
-def touchMove(x, y, fingerRadius=5, finger=0):
-    """Send a touch move event"""
-    with touchInfoLock:
-        # Check if this finger is in contact
-        if not finger_in_contact[finger]:
-            return False
-
-        setTouchCoords(x, y, fingerRadius, finger)
-        return _sendTouch(POINTER_FLAG_UPDATE | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT,
-                          finger, "touchMove")
-
-
-def touchUp(x, y, fingerRadius=5, finger=0):
-    """Send a touch up event"""
-    with touchInfoLock:
-        # Signal the hold thread to exit if it exists
-        if hold_threads[finger] is not None:
-            hold_thread_exit_flags[finger] = True
-            # Don't join - just let it exit on its own
-            hold_threads[finger] = None
-
-        # Even if not in contact, try to send a touchUp
-        # This ensures we don't get stuck touches
-        setTouchCoords(x, y, fingerRadius, finger)
-
-        # First send update to move to final position
-        moveOk = _sendTouch(POINTER_FLAG_UPDATE | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT,
-                            finger, "touchUp move to final location")
-
-        # Then send up to release the touch
-        upOk = _sendTouch(POINTER_FLAG_UP, finger, "touchUp")
-
-        # Mark this finger as no longer in contact
-        finger_in_contact[finger] = False
-
-        return moveOk and upOk
-
-
-def touchPinch(finger0startXY, finger0endXY, finger1startXY, finger1endXY, count=10, duration=0.75):
-    """Perform a pinch gesture with both fingers"""
-    # Extract coordinates
-    f0x, f0y = finger0startXY
-    f1x, f1y = finger1startXY
-
-    # Calculate delta movements
-    f0dx = float(finger0endXY[0] - finger0startXY[0]) / count
-    f0dy = float(finger0endXY[1] - finger0startXY[1]) / count
-    f1dx = float(finger1endXY[0] - finger1startXY[0]) / count
-    f1dy = float(finger1endXY[1] - finger1startXY[1]) / count
-
-    # Calculate delay between steps
-    delay = float(duration) / count
-
-    # Send touch down events for both fingers (without hold threads)
-    touchDown(f0x, f0y, finger=0, holdEvents=False)
-    touchDown(f1x, f1y, finger=1, holdEvents=False)
-
-    # Move fingers in steps
-    for i in range(count):
-        time.sleep(delay)
-        f0x += f0dx
-        f0y += f0dy
-        f1x += f1dx
-        f1y += f1dy
-        touchMove(int(f0x), int(f0y), finger=0)
-        touchMove(int(f1x), int(f1y), finger=1)
-
-    # Final delay and touch up
-    time.sleep(delay)
-    touchUp(int(finger0endXY[0]), int(finger0endXY[1]), finger=0)
-    touchUp(int(finger1endXY[0]), int(finger1endXY[1]), finger=1)
-
-    return True
-
-
-# Helper functions for backward compatibility
-def sendTouchDown(x, y):
-    return touchDown(x, y)
-
-
-def sendTouchUp(x, y):
-    return touchUp(x, y)
-
-
-def sendTouchMove(x, y):
-    return touchMove(x, y)
-
-
-def sendTap(x, y):
-    touchDown(x, y)
-    time.sleep(0.1)
-    touchUp(x, y)
-    return True
-
-
-# Initialize touch injection on module import
-_g_touchInjenctionInitialized = initialize_touch()
+                for touch in touches:
+                    touch.update()

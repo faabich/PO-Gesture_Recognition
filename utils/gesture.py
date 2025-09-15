@@ -2,8 +2,8 @@
 Name:         gesture.py
 Author:       Alex Kamano, Kilian Testard, Alexandre Ramirez, Nathan Filipowitz et Fabian Rostello
 Date:         03.04.2025
-Version:      0.2 - Refactored Zoom Implementation
-Description:  Multiple gesture recognition
+Version:      0.3 - Fixed Windows Touch Injection Error 87
+Description:  Multiple gesture recognition with robust error handling
 """
 
 import cv2
@@ -21,27 +21,17 @@ keybd_event = ctypes.windll.user32.keybd_event
 
 class Gesture:
     def __init__(self):
-        # --- (Your existing __init__ code remains unchanged) ---
         # Configuration ctypes pour Windows
         self.user32 = ctypes.windll.user32
         self.SCREEN_WIDTH = self.user32.GetSystemMetrics(0)  # SM_CXSCREEN constant
         self.SCREEN_HEIGHT = self.user32.GetSystemMetrics(1)  # SM_CYSCREEN constant
-        self.MOUSEEVENTF_LEFTDOWN = 0x0002
-        self.MOUSEEVENTF_LEFTUP = 0x0004
 
         self.previous_time = 0
         self.clicking = False  # state of the clic to avoid clic repetitions
 
-        # Clicking states
-        self.hand_states = {"Left": False, "Right": False}
-        self.last_click_time = {"Left": 0, "Right": 0}
-
         # Initialize class
         self.root = tk.Tk()
         self.initialize_gesture()
-
-        # Variables clicks
-        self.click_cooldown = 0.5  # Temps minimum entre les clics en secondes
 
         # Création du canvas pour dessiner
         self.canvas = tk.Canvas(
@@ -53,30 +43,12 @@ class Gesture:
         )
         self.canvas.pack()
 
-        self.detected_hands = set()
-
-        # NEW: State variable to track the current gesture mode
-        # Can be 'none', 'grab', or 'zoom'
-        self.gesture_mode = 'none'
-
-        # --- (The rest of your __init__ is unchanged) ---
-        self.hand_closed = {"Left": False, "Right": False}
-        self.last_x = {"Left": None, "Right": None}
-        self.last_y = {"Left": None, "Right": None}
-        self.current_positions = {"Left": (0, 0), "Right": (0, 0)}
-        self.last_gesture_change_time = {"Left": 0, "Right": 0}
-        self.debounce_time = 0.2  # seconds
-
-        self.zoom_mode = False
-        self.initial_distance = None
-        self.zoom_threshold = 50  # Minimum distance change to trigger zoom
-        self.zoom_center_x = None
-        self.zoom_center_y = None
-        self.last_zoom_distance = None
-        self.zoom_sensitivity = 2.0  # Adjust this to make zoom more/less sensitive
+        # Enhanced hand tracking
+        self.manager = touch.TouchManager(2)
+        self.hand_info = {}
+        self.hand_positions = {"Left": (0, 0), "Right": (0, 0)}
 
 
-    # --- (All your other methods like initialize_gesture, make_click_through, etc., remain here unchanged) ---
     def initialize_gesture(self):
         # Création de la fenêtre Tkinter transparente
         self.root.title("Hand Circles")
@@ -85,47 +57,23 @@ class Gesture:
         self.root.attributes("-transparentcolor", "black")  # Couleur à rendre transparente
         self.root.geometry(f"{self.SCREEN_WIDTH}x{self.SCREEN_HEIGHT}+0+0")  # Plein écran
         self.root.overrideredirect(True)  # Pas de bordures de fenêtre
-        self.root.wm_attributes("-disabled", True)  # Désactiver les interactions avec la fenêtre
+        # self.root.wm_attributes("-disabled", True)  # Désactiver les interactions avec la fenêtre
         self.root.config(bg="black")  # Fond noir (qui sera transparent)
         self.make_click_through()
 
 
-    # Une fonction spéciale pour rendre la fenêtre "click-through"
+
     def make_click_through(self):
+        """Make window click-through with enhanced error handling"""
         try:
             self.hwnd = ctypes.windll.user32.FindWindowW(None, "Hand Circles")
             self.style = ctypes.windll.user32.GetWindowLongW(self.hwnd, -20)  # GWL_EXSTYLE
             self.style |= 0x00000020 | 0x80000  # WS_EX_TRANSPARENT | WS_EX_LAYERED
             ctypes.windll.user32.SetWindowLongW(self.hwnd, -20, self.style)
             return True
-        except:
+        except Exception as e:
+            print(f"Failed to make window click-through: {e}")
             return False
-
-
-    def perform_click(self, x, y, hand_id):
-        """Effectue un clic à la position spécifiée"""
-        current_time = time.time()
-
-        # Vérifier si suffisamment de temps s'est écoulé depuis le dernier clic
-        if current_time - self.last_click_time[hand_id] < self.click_cooldown:
-            return
-
-        # Convertir les coordonnées (0-1) en coordonnées d'écran
-        screen_x = int(x * self.SCREEN_WIDTH)
-        screen_y = int(y * self.SCREEN_HEIGHT)
-        touch.touchDown(x, y, holdEvents=True)
-
-        # Mettre à jour le temps du dernier clic
-        self.last_click_time[hand_id] = current_time
-        print(f"Clic effectué par la main {hand_id} à ({screen_x}, {screen_y})")
-
-
-    def perform_unclick(self, x, y, hand_id):
-        # # Convertir les coordonnées (0-1) en coordonnées d'écran
-        screen_x = int(x * self.SCREEN_WIDTH)
-        screen_y = int(y * self.SCREEN_HEIGHT)
-        # sendTouchUp(screen_x, screen_y)
-        print(f"Unclic effectué par la main")
 
 
     @staticmethod
@@ -134,7 +82,6 @@ class Gesture:
         Détecte si la position de la main correspond à un geste de clic
         (distance entre pouce et index faible)
         """
-
         threshold = 0.2
 
         wrist = np.array([landmarks[0].x, landmarks[0].y, landmarks[0].z])
@@ -146,129 +93,83 @@ class Gesture:
         distance2 = np.linalg.norm(wrist - midfing_tip)
         distance3 = np.linalg.norm(wrist - pinky_tip)
 
-        # print(f"distance1: {distance1}, distance2: {distance2}, distance3: {distance3}")
-
-        return distance1 < threshold and distance2 < threshold and distance3 < threshold   # Seuil de détection
-
+        return distance1 < threshold and distance2 < threshold and distance3 < threshold
 
     def update_circles(self, hand_positions):
-        """Met à jour l'affichage des cercles"""
-        # Effacer le canvas
-        self.canvas.delete("all")
+        """Met à jour l'affichage des cercles avec gestion d'erreur"""
+        try:
+            # Effacer le canvas
+            self.canvas.delete("all")
 
-        # Dessiner les cercles
-        for hand_id, (x, y) in hand_positions.items():
-            radius = 30
+            # Dessiner les cercles
+            for hand_id, (x, y) in hand_positions.items():
+                radius = 30
 
-            # Couleur selon la main
-            color = "#00FF00" if hand_id == "Left" else "#FF0000"
+                # Couleur selon la main
+                color = "#00FF00" if hand_id == "Left" else "#FF0000"
 
-            # Dessiner le cercle avec une transparence
-            self.canvas.create_oval(
-                x - radius,
-                y - radius,
-                x + radius,
-                y + radius,
-                fill=color,
-                stipple="gray50",  # Cela crée un effet de transparence
-                tags = "circles"
-            )
+                # Dessiner le cercle avec une transparence
+                self.canvas.create_oval(
+                    x - radius,
+                    y - radius,
+                    x + radius,
+                    y + radius,
+                    fill=color,
+                    stipple="gray50",  # Cela crée un effet de transparence
+                    tags="circles"
+                )
 
-        # Mettre à jour l'interface
-        self.root.update()
+            # Mettre à jour l'interface
+            self.root.update()
+            self.make_click_through()
+        except Exception as e:
+            print(f"Error updating circles: {e}")
 
-        self.make_click_through()
 
-    # This function can now be removed, as its logic is integrated into the new touchscreen_mode
-    # def handle_touch_for_hand(self, hand_id, x, y, is_closed):
-
-    # These functions are no longer needed as we are not using the flawed touchPinch approach
-    # def handle_zoom_gesture(self, left_pos, right_pos):
-    # def simulate_zoom_in(self, center_x, center_y, zoom_amount):
-    # def simulate_zoom_out(self, center_x, center_y, zoom_amount):
-
-    def touchscreen_mode(self, landmarks, mp_drawing, mp_hands, frame, has_cursor):
-        hand_info = {} # Store position and closed state for each hand
-
+    def touchscreen_mode(self, landmarks):
+        """Simplified logic for multi-touch using TouchManager."""
+        # --- Process hands and get positions ---
         if landmarks.multi_hand_landmarks:
             for idx, hand_landmarks in enumerate(landmarks.multi_hand_landmarks):
-                # Determine hand ID ("Left" or "Right")
                 hand_id = landmarks.multi_handedness[idx].classification[0].label
-
-                # Check if hand is closed
                 is_closed = self.is_fingers_closed(hand_landmarks.landmark)
 
-                # Get hand position (wrist) and scale to screen
-                palm_hand = hand_landmarks.landmark[0]
-                screen_x = int(palm_hand.x * self.SCREEN_WIDTH * 1.2 - 0.1 * self.SCREEN_WIDTH)
-                screen_y = int(palm_hand.y * self.SCREEN_HEIGHT * 1.2 - 0.1 * self.SCREEN_HEIGHT)
+                # Use a key point (e.g., wrist/palm landmark 0) for position
+                palm = hand_landmarks.landmark[0]
+                x = int(palm.x * self.SCREEN_WIDTH)
+                y = int(palm.y * self.SCREEN_HEIGHT)
 
-                # Store all info for this frame
-                hand_info[hand_id] = {'pos': (screen_x, screen_y), 'closed': is_closed}
+                # Keep position inside screen bounds
+                x = max(0, min(x, self.SCREEN_WIDTH - 1))
+                y = max(0, min(y, self.SCREEN_HEIGHT - 1))
 
-                # Display hand state on the CV2 frame
-                cv2.putText(frame, f"Main {hand_id}: {'Closed' if is_closed else 'Open'}",
-                            (10, 30 + idx * 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                self.hand_info[hand_id] = {"pos": (x, y), "closed": is_closed}
+                self.hand_positions[hand_id] = (x, y)
 
-        # --- GESTURE LOGIC ---
+                # Circles display
+                # self.update_circles({h: info["pos"] for h, info in self.hand_info.items()})
 
-        num_hands = len(hand_info)
-        closed_hands = [hand for hand, info in hand_info.items() if info['closed']]
-        num_closed_hands = len(closed_hands)
+        # --- Inject touches based on hand state ---
+        # Track the fingers using a map
+        finger_map = {"Left": 0, "Right": 1}
 
-        # State: Zooming (two hands are closed)
-        if num_closed_hands == 2:
-            if self.gesture_mode != 'zoom':
-                # --- Start of Zoom ---
-                print("Starting Zoom Mode")
-                self.gesture_mode = 'zoom'
-                left_pos = hand_info['Left']['pos']
-                right_pos = hand_info['Right']['pos']
-                # finger 0 for Left, finger 1 for Right
-                touch.touchDown(left_pos[0], left_pos[1], finger=0)
-                touch.touchDown(right_pos[0], right_pos[1], finger=1)
+        # Iterate through all possible hands and update touches
+        for hand_id, finger_id in finger_map.items():
+            if hand_id in self.hand_info:
+                pos = self.hand_info[hand_id]["pos"]
+                is_closed = self.hand_info[hand_id]["closed"]
+
+                if is_closed:
+                    self.manager.press(id=finger_id, x=pos[0], y=pos[1])
+                else:
+                    self.manager.up(id=finger_id)
             else:
-                # --- Continue Zoom ---
-                left_pos = hand_info['Left']['pos']
-                right_pos = hand_info['Right']['pos']
-                print(f"Updating Zoom Left: {left_pos[0]}, {left_pos[1]} | Right: {right_pos[0]}, {right_pos[1]}")
-                touch.touchMove(left_pos[0], left_pos[1], finger=0)
-                touch.touchMove(right_pos[0], right_pos[1], finger=1)
+                self.manager.up(id=finger_id)
 
-        # State: Grabbing (exactly one hand is closed)
-        elif num_closed_hands == 1:
-            hand_id = closed_hands[0]
-            pos = hand_info[hand_id]['pos']
+        # Apply all changes
+        self.manager.apply_touches()
 
-            # Use finger 0 for left hand grab, finger 1 for right hand grab
-            finger_index = 0 if hand_id == "Left" else 1
-
-            if self.gesture_mode != 'grab':
-                # --- Start of Grab ---
-                print(f"Starting Grab with {hand_id} hand")
-                self.gesture_mode = 'grab'
-                # If we were just zooming, make sure the other finger is lifted
-                touch.touchUp(0, 0, finger=1 - finger_index) # Send a 'safe' touchUp
-                touch.touchDown(pos[0], pos[1], finger=finger_index)
-            else:
-                # --- Continue Grab ---
-                print(f"Moving with {hand_id} hand")
-                touch.touchMove(pos[0], pos[1], finger=finger_index)
-
-        # State: Idle (no hands are closed)
-        else:
-            if self.gesture_mode != 'none':
-                # --- End of Gesture ---
-                print(f"Ending gesture: {self.gesture_mode}")
-                # Release all touch points to be safe
-                touch.touchUp(0, 0, finger=0)
-                touch.touchUp(0, 0, finger=1)
-                self.gesture_mode = 'none'
-
-        # Update the visual circles on the transparent window
-        self.update_circles({hand: info['pos'] for hand, info in hand_info.items()})
-
-        return self.root
+        time.sleep(0.01)
 
     def click_mouse(self, landmarks, frame):
         # Process each hand's landmarks
@@ -334,10 +235,6 @@ class Gesture:
                     ctypes.windll.user32.SetCursorPos(int(screen_x), int(screen_y))
                     self.previous_time = current_time
 
-
-
-
-
     def driving_wheel(self, landmarks, original_image):
         imgH, imgW, imgC = original_image.shape
         mid_y_up = imgH // 2 + 50
@@ -372,7 +269,6 @@ class Gesture:
             keybd_event(0x57, 0, 2, 0)
             keybd_event(0x41, 0, 2, 0)
             keybd_event(0x44, 0, 2, 0)
-
 
     # function defining when a finger is folded via the y position of the tip and middle joint
     def finger_folded(self, landmarks, tip_id, mid_id):
