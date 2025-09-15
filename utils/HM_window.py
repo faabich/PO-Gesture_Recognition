@@ -32,20 +32,23 @@ class HM_window:
                 # print("HM_window running")
                 frame = cv2.flip(frame, 1)
                 hand_landmarks_results, mp_drawing_utils, mp_hands_solutions = self.hand_detector.get_hand_landmarks(frame)
-                # match parameter:
-                #     case "earth":
-                #         self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT,False)
-                #     case "particle love":
-                #         self.gestures.move_mouse(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT)
-                #         self.gestures.click_mouse(hand_landmarks_results, frame)
-                #     case "paint":
-                #         self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT,True)
-                #     case "btd4":
-                #         self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT,True)
-                #     case "chess":
-                #         self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT,True)
-                #     case "ssp":
-                #         self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT,True)
+                match parameter:
+                    case "basic":
+                        self.gestures.touchscreen_mode(hand_landmarks_results,True)
+                    case "earth":
+                        self.gestures.touchscreen_mode(hand_landmarks_results,False)
+
+                    case "particle love":
+                        self.gestures.move_mouse(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT)
+                        self.gestures.click_mouse(hand_landmarks_results, frame)
+                    case "paint":
+                        self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT,True)
+                    case "btd4":
+                        self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT,True)
+                    case "chess":
+                        self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT,True)
+                    case "ssp":
+                        self.gestures.touchscreen_mode(hand_landmarks_results, frame, self.CAMERA_WIDTH, self.CAMERA_HEIGHT,True)
                 # cv2.imshow("capture image", frame)
                 if cv2.waitKey(10) & 0xFF == ord('q'):
                     self.stop()
