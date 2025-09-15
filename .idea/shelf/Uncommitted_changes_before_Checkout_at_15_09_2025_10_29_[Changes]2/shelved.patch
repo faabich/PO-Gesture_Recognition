@@ -1,0 +1,16 @@
+Index: .idea/ICT426.iml
+===================================================================
+diff --git a/.idea/ICT426.iml b/.idea/ICT426.iml
+new file mode 100644
+--- /dev/null	(date 1757924970568)
++++ b/.idea/ICT426.iml	(date 1757924970568)
+@@ -0,0 +1,8 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<module type="PYTHON_MODULE" version="4">
++  <component name="NewModuleRootManager">
++    <content url="file://$MODULE_DIR$" />
++    <orderEntry type="jdk" jdkName="Python 3.12" jdkType="Python SDK" />
++    <orderEntry type="sourceFolder" forTests="false" />
++  </component>
++</module>
+\ No newline at end of file

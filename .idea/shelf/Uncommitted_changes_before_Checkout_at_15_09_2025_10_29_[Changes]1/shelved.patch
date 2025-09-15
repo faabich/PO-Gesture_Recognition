@@ -1,0 +1,57 @@
+Index: .idea/modules.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<project version=\"4\">\r\n  <component name=\"ProjectModuleManager\">\r\n    <modules>\r\n      <module fileurl=\"file://$PROJECT_DIR$/.idea/PO-Gesture_Recognition.iml\" filepath=\"$PROJECT_DIR$/.idea/PO-Gesture_Recognition.iml\" />\r\n    </modules>\r\n  </component>\r\n</project>
+===================================================================
+diff --git a/.idea/modules.xml b/.idea/modules.xml
+--- a/.idea/modules.xml	(revision d743f394ac906b8dbbc23f277a850049bb7f5ea2)
++++ b/.idea/modules.xml	(date 1757924970595)
+@@ -2,7 +2,7 @@
+ <project version="4">
+   <component name="ProjectModuleManager">
+     <modules>
+-      <module fileurl="file://$PROJECT_DIR$/.idea/PO-Gesture_Recognition.iml" filepath="$PROJECT_DIR$/.idea/PO-Gesture_Recognition.iml" />
++      <module fileurl="file://$PROJECT_DIR$/.idea/ICT426.iml" filepath="$PROJECT_DIR$/.idea/ICT426.iml" />
+     </modules>
+   </component>
+ </project>
+\ No newline at end of file
+Index: .idea/misc.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<project version=\"4\">\r\n  <component name=\"Black\">\r\n    <option name=\"sdkName\" value=\"Python 3.12\" />\r\n  </component>\r\n  <component name=\"MaterialThemeProjectNewConfig\">\r\n    <option name=\"metadata\">\r\n      <MTProjectMetadataState>\r\n        <option name=\"userId\" value=\"3812dd67:1939b8d7493:-7ffd\" />\r\n      </MTProjectMetadataState>\r\n    </option>\r\n  </component>\r\n  <component name=\"ProjectRootManager\" version=\"2\" project-jdk-name=\"Python 3.12\" project-jdk-type=\"Python SDK\" />\r\n</project>
+===================================================================
+diff --git a/.idea/misc.xml b/.idea/misc.xml
+--- a/.idea/misc.xml	(revision d743f394ac906b8dbbc23f277a850049bb7f5ea2)
++++ b/.idea/misc.xml	(date 1757924970623)
+@@ -1,14 +1,4 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <project version="4">
+-  <component name="Black">
+-    <option name="sdkName" value="Python 3.12" />
+-  </component>
+-  <component name="MaterialThemeProjectNewConfig">
+-    <option name="metadata">
+-      <MTProjectMetadataState>
+-        <option name="userId" value="3812dd67:1939b8d7493:-7ffd" />
+-      </MTProjectMetadataState>
+-    </option>
+-  </component>
+   <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.12" project-jdk-type="Python SDK" />
+ </project>
+\ No newline at end of file
+Index: .idea/.gitignore
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># Default ignored files\r\n/shelf/\r\n/workspace.xml\r\n# Editor-based HTTP Client requests\r\n/httpRequests/\r\n# Datasource local storage ignored files\r\n/dataSources/\r\n/dataSources.local.xml\r\n
+===================================================================
+diff --git a/.idea/.gitignore b/.idea/.gitignore
+--- a/.idea/.gitignore	(revision d743f394ac906b8dbbc23f277a850049bb7f5ea2)
++++ b/.idea/.gitignore	(date 1757924970636)
+@@ -3,6 +3,3 @@
+ /workspace.xml
+ # Editor-based HTTP Client requests
+ /httpRequests/
+-# Datasource local storage ignored files
+-/dataSources/
+-/dataSources.local.xml
