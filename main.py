@@ -48,7 +48,7 @@ def threaded_hm_window_runner(width, height):
         print(e)
         traceback.print_exc()
 
-def start_HM_window(HM_width, HM_height):
+def start_HM_window(HM_width, HM_height, preset=None):
     import cv2
     # AI generated (threading optimization)
     try:
@@ -117,6 +117,8 @@ open_hand_points_selection_utility_button = ctk.CTkButton(custom_options_frame, 
 
 launch_button = ctk.CTkButton(custom_options_frame, text="Launch main window", command=lambda: start_HM_window(cam_width, cam_height))
 launch_button.grid(row=3, column=1, columnspan=2, padx=10, pady=10)
+
+start_HM_window(cam_width, cam_height)
 
 app.geometry(f"{width}x{height}")
 app.mainloop()

@@ -16,6 +16,7 @@ from utils.hand_detector import *
 from PIL import Image
 import utils.HM_window as HM_window
 
+gestures = Gesture()
 
 def add_demo(name, img_path, technology):
     pass
@@ -24,13 +25,13 @@ def open_link(url):
     webbrowser.open(url)
 
 def open_browser(main_frame, width, height):
+    from main import start_HM_window  # Local import to avoid circular dependency
     game_browser = ctk.CTkToplevel(main_frame)
     game_browser.geometry(f"{width}x{height}")
     game_browser.title("Demo browser")
     game_browser.minsize(400,400)
     game_browser.grab_set() # Focus on this window, make the main frame unclickable
 
-    # Alexandre:
     """WINDOW GLOBAL"""
     title_label = customtkinter.CTkLabel(game_browser, text="GAME HUB", text_color="black",
                                          font=customtkinter.CTkFont(size=60, weight="bold"))
@@ -48,80 +49,63 @@ def open_browser(main_frame, width, height):
     game_browser.grid_columnconfigure(2, weight=1)
     game_browser.grid_columnconfigure(3, weight=1)
 
-    def open_earth():
-        webbrowser.open('https://earth.google.com/web/@46.82164296,6.50019955,1077.83283169a,556.60504226d,35y,238.80930889h,45t') #
-        try:
-            hm_window = HM_window.HM_window(width, height)
-            hm_window.run("earth")
+    def change_preset(preset):
+        match preset:
+            case "earth":
+                gestures.touchscreen_mode(hand_landmarks_results)
+            case "particle love":
+                gestures.touchscreen_mode(hand_landmarks_results)
+            case "paint":
+                gestures.touchscreen_mode(hand_landmarks_results)
+            case "btd4":
+                gestures.touchscreen_mode(hand_landmarks_results)
+            case "chess":
+                gestures.touchscreen_mode(hand_landmarks_results)
+            case "ssp":
+                gestures.touchscreen_mode(hand_landmarks_results)
+            
+
+    def open_url(url, preset=None):
+        webbrowser.open(url)
+        try: 
+            start_HM_window(width, height, preset)
+            print("successfully started HM_window")
         except Exception as e:
-            print("Error in threaded_hm_window_runner:")
+            print("Error in start_HM_window:")
             print(e)
-            # traceback.print_exc()
-
-    def open_particle_love():
-        webbrowser.open('https://particle-love.com/')
         try:
-            hm_window = HM_window.HM_window(width, height)
-            print("je passe par ici pour ouvrir particle love")
-            hm_window.run("particle love")
+            change_preset(preset)
         except Exception as e:
-            print("Error in threaded_hm_window_runner:")
-            print(e)
-            # traceback.print_exc()
-
-    def open_paint():
-        webbrowser.open('https://sketch.io/sketchpad/')
-        try:
-            hm_window = HM_window.HM_window(width, height)
-            hm_window.run("paint")
-        except Exception as e:
-            print("Error in threaded_hm_window_runner:")
-            print(e)
-
-
-    def open_btd4():
-        webbrowser.open('https://www.crazygames.com/game/bloons-tower-defense-4')
-        try:
-            hm_window = HM_window.HM_window(width, height)
-            hm_window.run("btd4")
-        except Exception as e:
-            print("Error in threaded_hm_window_runner:")
+            print("Error in change_preset:")
             print(e)
 
-    def open_chess():
-        webbrowser.open('https://plainchess.timwoelfle.de/')
+    def open_program(folder, program_name, preset=None):
+        """Start an executable located in the repository's games/<folder>/ directory
+        and then start the HM_window with an optional preset.
+        """
         try:
-            hm_window = HM_window.HM_window(width, height)
-            hm_window.run("chess")
-        except Exception as e:
-            print("Error in threaded_hm_window_runner:")
-            print(e)
+            # Resolve project root from this file's location
+            parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            # Path to the executable in the games/<folder> subfolder
+            exe_path = os.path.join(parent_dir, "games", folder, program_name)
 
-    def open_ssp():
-        try:
-            # Obtenir le chemin vers le dossier racine du projet
-            parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            # Chemin vers l'exécutable dans un sous-dossier 'games'
-            exe_path = os.path.join(parent_dir, "games", "ssp", "SoundSpacePlus.exe")
-
-            # Vérifier si le fichier existe
+            # Check if the file exists and launch it
             if os.path.exists(exe_path):
-                # Try to start the .exe
                 try:
                     subprocess.Popen([exe_path], shell=True)
                 except Exception as e:
-                    print("Erreur lors du lancement du jeu")
-                    print(e)
+                    print("Erreur lors du lancement du jeu:", e)
             else:
                 print(f"Erreur: Le fichier {exe_path} n'existe pas")
         except Exception as e:
-            pass
+            print("open_program unexpected error:", e)
         try:
-            hm_window = HM_window.HM_window(width, height)
-            hm_window.run("ssp")
+            change_preset(preset)
         except Exception as e:
-            print("Error in threaded_hm_window_runner:")
+            print("Error in change_preset:")
             print(e)
+
+    # Old individual open_* helpers removed: buttons call `open_url` or `open_program` directly.
 
 
     """img LINK LIST"""
@@ -167,37 +151,37 @@ def open_browser(main_frame, width, height):
 
     """BUTTONS"""
 
-    earth_button = customtkinter.CTkButton(game_browser, text="Google Earth", command=open_earth,
+    earth_button = customtkinter.CTkButton(game_browser, text="Google Earth", command=lambda: open_url('https://earth.google.com/web/@46.82164296,6.50019955,1077.83283169a,556.60504226d,35y,238.80930889h,45t', preset="earth"),
                                            image=img_earth, compound="top", fg_color="white", text_color="black",
                                            hover_color="lightgray",
                                            font=customtkinter.CTkFont(size=20, weight="bold"))
     earth_button.grid(column=0, row=1, padx=20, pady=20)
 
-    particle_love_button = customtkinter.CTkButton(game_browser, text="Particle Love Javascript Demo", command=open_particle_love,
+    particle_love_button = customtkinter.CTkButton(game_browser, text="Particle Love Javascript Demo", command=lambda: open_url('https://particle-love.com/', preset="particle love"),
                                             image=img_particlelove, compound="top", fg_color="white", text_color="black",
                                             hover_color="lightgray",
                                             font=customtkinter.CTkFont(size=20, weight="bold"))
     particle_love_button.grid(column=1, row=1, padx=20, pady=20)
 
-    paint_button = customtkinter.CTkButton(game_browser, text="Paint", command=open_paint,
+    paint_button = customtkinter.CTkButton(game_browser, text="Paint", command=lambda: open_url('https://sketch.io/sketchpad/', preset="paint"),
                                              image=img_paint, compound="top", fg_color="white", text_color="black",
                                              hover_color="lightgray",
                                              font=customtkinter.CTkFont(size=20, weight="bold"))
     paint_button.grid(column=2, row=1, padx=20, pady=20)
 
-    btd4_button = customtkinter.CTkButton(game_browser, text="bloons tower deffense 4", command=open_btd4,
+    btd4_button = customtkinter.CTkButton(game_browser, text="bloons tower deffense 4", command=lambda: open_url('https://www.crazygames.com/game/bloons-tower-defense-4', preset="btd4"),
                                           image=img_btd4, compound="top", fg_color="white", text_color="black",
                                           hover_color="lightgray",
                                           font=customtkinter.CTkFont(size=20, weight="bold"))
     btd4_button.grid(column=3, row=1, padx=20, pady=20)
 
-    chess_button = customtkinter.CTkButton(game_browser, text="Play Chess", command=open_chess,
+    chess_button = customtkinter.CTkButton(game_browser, text="Play Chess", command=lambda: open_url('https://plainchess.timwoelfle.de/', preset="chess"),
                                            image=img_chess, compound="top", fg_color="white", text_color="black",
                                            hover_color="lightgray",
                                            font=customtkinter.CTkFont(size=20, weight="bold"))
     chess_button.grid(column=0, row=2, padx=20, pady=20)
 
-    ssp_button = customtkinter.CTkButton(game_browser, text="Sound Space+", command=open_ssp,
+    ssp_button = customtkinter.CTkButton(game_browser, text="Sound Space+", command=lambda: open_program("ssp", "SoundSpacePlus.exe", preset="ssp"),
                                          image=img_ssp, compound="top", fg_color="white", text_color="black",
                                          hover_color="lightgray",
                                          font=customtkinter.CTkFont(size=20, weight="bold"))
