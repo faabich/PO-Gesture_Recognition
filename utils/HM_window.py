@@ -9,7 +9,6 @@ Description:  Entry point for the HandGesture application
 from utils.hand_detector import HandDetector
 from utils.camera import VideoCamera
 from utils.gesture import Gesture
-from PIL import Image, ImageTk
 from utils.common import *
 import cv2
 import time

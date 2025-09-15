@@ -7,13 +7,9 @@ Description:  Entry point for the HandGesture application
 """
 
 import customtkinter as ctk
-import cv2
 from utils.common import start_HM_window, stop_hm_window, update_status_label
-from utils.camera import VideoCamera
-from utils.hand_detector import HandDetector
 import utils.float_spinbox as sb
 from utils.custom_demo_browser import open_browser
-import time
 
 width = 425
 height = 225
