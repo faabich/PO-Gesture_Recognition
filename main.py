@@ -16,8 +16,8 @@ import traceback # AI generated (threading optimization)
 
 from utils import custom_demo_browser
 
-width = 425
-height = 225
+width = 1600
+height = 900
 
 # Default camera resolution
 cam_width = 1600
@@ -25,17 +25,57 @@ cam_height = 900
 
 app = ctk.CTk()
 app.title("Hand Gesture Recognition Configurator")
+app.geometry(f"{1600}x{900}")
+app.minsize(400,400)
 
-# Create a new frame for custom options
-custom_options_frame = ctk.CTkFrame(app)
-custom_options_frame.grid(row=4, column=0, columnspan=3, padx=10, pady=10)
-custom_options_frame.forget() # Hide the frame by default
+title_label = ctk.CTkLabel(app, text="GAME HUB", text_color="black",
+                                        font=ctk.CTkFont(size=60, weight="bold"))
+title_label.grid(row=0, column=0, columnspan=4, pady=20)
 
-custom_options_frame.grid_columnconfigure(0, weight=1)
-custom_options_frame.grid_columnconfigure(1, weight=1)
-custom_options_frame.grid_columnconfigure(2, weight=1)
+app.grid_columnconfigure(1, weight=1)
+app.grid_columnconfigure(2, weight=1)
+app.grid_columnconfigure(3, weight=1)
+app.grid_columnconfigure(0, weight=1)
 
 hm_window = HM_window
+
+"""BUTTONS"""
+
+earth_button = ctk.CTkButton(app, text="Google Earth", command=lambda: custom_demo_browser.open_url('https://earth.google.com/web/@46.82164296,6.50019955,1077.83283169a,556.60504226d,35y,238.80930889h,45t', preset="earth"),
+                                        image=custom_demo_browser.img_earth, compound="top", fg_color="white", text_color="black",
+                                        hover_color="lightgray",
+                                        font=app.CTkFont(size=20, weight="bold"))
+earth_button.grid(column=0, row=1, padx=20, pady=20)
+
+particle_love_button = ctk.CTkButton(app, text="Particle Love Javascript Demo", command=lambda: custom_demo_browser.open_url('https://particle-love.com/', preset="particle love"),
+                                        image=custom_demo_browser.img_particlelove, compound="top", fg_color="white", text_color="black",
+                                        hover_color="lightgray",
+                                        font=app.CTkFont(size=20, weight="bold"))
+particle_love_button.grid(column=1, row=1, padx=20, pady=20)
+
+paint_button = ctk.CTkButton(app, text="Paint", command=lambda: custom_demo_browser.open_url('https://sketch.io/sketchpad/', preset="paint"),
+                                            image=custom_demo_browser.img_paint, compound="top", fg_color="white", text_color="black",
+                                            hover_color="lightgray",
+                                            font=app.CTkFont(size=20, weight="bold"))
+paint_button.grid(column=2, row=1, padx=20, pady=20)
+
+btd4_button = ctk.CTkButton(app, text="bloons tower deffense 4", command=lambda: custom_demo_browser.open_url('https://www.crazygames.com/game/bloons-tower-defense-4', preset="btd4"),
+                                        image=custom_demo_browser.img_btd4, compound="top", fg_color="white", text_color="black",
+                                        hover_color="lightgray",
+                                        font=app.CTkFont(size=20, weight="bold"))
+btd4_button.grid(column=3, row=1, padx=20, pady=20)
+
+chess_button = ctk.CTkButton(app, text="Play Chess", command=lambda: custom_demo_browser.open_url('https://plainchess.timwoelfle.de/', preset="chess"),
+                                        image=custom_demo_browser.img_chess, compound="top", fg_color="white", text_color="black",
+                                        hover_color="lightgray",
+                                        font=app.CTkFont(size=20, weight="bold"))
+chess_button.grid(column=0, row=2, padx=20, pady=20)
+
+ssp_button = ctk.CTkButton(app, text="Sound Space+", command=lambda: custom_demo_browser.open_program("ssp", "SoundSpacePlus.exe", preset="ssp"),
+                                        image=custom_demo_browser.img_ssp, compound="top", fg_color="white", text_color="black",
+                                        hover_color="lightgray",
+                                        font=app.CTkFont(size=20, weight="bold"))
+ssp_button.grid(column=1, row=2, padx=20, pady=20)
 
 # AI generated (threading optimization)
 def threaded_hm_window_runner(width, height):
@@ -59,64 +99,6 @@ def start_HM_window(HM_width, HM_height, preset=None):
     except Exception as e:
         print(f"Error in HM_window thread: {e}")
 
-def checkbox_event():
-    pass
-
-hand_tracking_method = "touchscreen"
-
-def optionmenu_callback(choice):
-    global hand_tracking_method
-    hand_tracking_method = choice
-    print(f"Selected option: {choice}")
-
-def open_hand_selection_utility():
-    pass
-
-def checkbox_event_show_more_options():
-    if custom_options_checkbox_var.get()=="on":
-        custom_options_frame.grid(row=4, column=0, columnspan=3, padx=10, pady=10, sticky="nsew") # Show the additional options
-        app.geometry("425x600")
-    else:
-        custom_options_frame.grid_forget() # Hide the additional options
-        app.geometry("425x225")
-
-description = ctk.CTkLabel(app, text="Hand Gesture Recognition Demo Configurator Utility:\nTo quickly start a common demo, you can browse the\nready-to-use programs by clicking on the button below.", font=("Arial", 16))
-description.grid(row=0, column=0, columnspan=3, padx=10, pady=10)
-
-demo_browser_button = ctk.CTkButton(app, text="Browse ready-to-use programs", command=lambda: open_browser(main_frame=app, width=800, height=600))
-demo_browser_button.grid(row=1, column=1, padx=10, pady=10)
-
-bottom_description = ctk.CTkLabel(app, text="To start a custom demo, you can set the camera resolution\nand the main window size below.", font=("Arial", 16))
-bottom_description.grid(row=2, column=0, columnspan=3, padx=10, pady=10)
-
-custom_options_checkbox_var = ctk.StringVar(value="off")
-custom_options_checkbox = ctk.CTkCheckBox(app, text="Use custom options",variable=custom_options_checkbox_var, onvalue="on", offvalue="off", command=checkbox_event_show_more_options)
-custom_options_checkbox.grid(row=3, column=1, columnspan=1, padx=10, pady=10)
-
-technology_label = ctk.CTkLabel(custom_options_frame, text="Technology:")
-technology_label.grid(row=0, column=1, padx=10, pady=10, sticky="w")
-
-# Choosing which 'technology' to use (mouse-like, touchscreen or multiple-input)
-optionmenu_var = ctk.StringVar(value="choose a technology")
-optionmenu = ctk.CTkOptionMenu(custom_options_frame,values=["mouse-like", "touchscreen", "multiple-input"], command=optionmenu_callback, variable=optionmenu_var)
-optionmenu.grid(row=0, column=2, padx=10, pady=10, sticky="w")
-
-num_hands_label = ctk.CTkLabel(custom_options_frame,text="Number of hands to track")
-num_hands_label.grid(row=1, column=1, padx=10, pady=10, sticky="w")
-
-spinbox = sb.FloatSpinbox(custom_options_frame, width=140, step_size=1)
-spinbox.grid(row=1, column=2, padx=10, pady=10, sticky="w")
-
-check_var = ctk.StringVar(value="off")
-# custom_res_cb = ctk.CTkCheckBox(app, text="Use a custom resolution", command=checkbox_event, variable=check_var, onvalue="on", offvalue="off")
-
-track_points_label = ctk.CTkLabel(custom_options_frame, text="Track hand points:")
-track_points_label.grid(row=2, column=1, padx=10, pady=10, sticky="w")
-
-open_hand_points_selection_utility_button = ctk.CTkButton(custom_options_frame, text="Open hand points selection utility", command=open_hand_selection_utility)
-
-launch_button = ctk.CTkButton(custom_options_frame, text="Launch main window", command=lambda: start_HM_window(cam_width, cam_height))
-launch_button.grid(row=3, column=1, columnspan=2, padx=10, pady=10)
 
 start_HM_window(cam_width, cam_height)
 
