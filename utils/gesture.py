@@ -126,8 +126,15 @@ class Gesture:
             print(f"Error updating circles: {e}")
 
 
-    def touchscreen_mode(self, landmarks):
-        """Simplified logic for multi-touch using TouchManager."""
+    def touchscreen_mode(self, landmarks, frame=None, camera_width=None, camera_height=None, enable_visuals=False):
+        """Simplified logic for multi-touch using TouchManager.
+
+        Backwards-compatible signature: older callers may pass extra args
+        (frame, camera_width, camera_height, enable_visuals). These are
+        optional and only used by modes that need visual output or coordinate
+        scaling. When only `landmarks` is provided, the method behaves as
+        before.
+        """
         # --- Process hands and get positions ---
         if landmarks.multi_hand_landmarks:
             for idx, hand_landmarks in enumerate(landmarks.multi_hand_landmarks):
