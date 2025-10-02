@@ -15,6 +15,7 @@ class VideoCamera(object):
         self.cap = cv2.VideoCapture(0)
         self.width = width
         self.height = height
+        self.status = True
 
         # Width and height of window
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
