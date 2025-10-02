@@ -38,26 +38,56 @@ custom_options_frame.grid_columnconfigure(2, weight=1)
 hm_window = HM_window
 
 # AI generated (threading optimization)
-def threaded_hm_window_runner(width, height):
-    global hm_window
-    try:
-        hm_window = HM_window.HM_window(width, height)
-        hm_window.run("basic")
-    except Exception as e:
-        print("Error in threaded_hm_window_runner:")
-        print(e)
-        traceback.print_exc()
+# def threaded_hm_window_runner(width, height):
+#     global hm_window
+#     try:
+#         hm_window = HM_window.HM_window(width, height)
+#         hm_window.run("basic")
+#     except Exception as e:
+#         print("Error in threaded_hm_window_runner:")
+#         print(e)
+#         traceback.print_exc()
+#
+# def start_HM_window(HM_width, HM_height):
+#     import cv2
+#     # AI generated (threading optimization)
+#     try:
+#         cv2.destroyAllWindows()  # Close any existing OpenCV windows
+#         thread = threading.Thread(target=threaded_hm_window_runner, args=(HM_width, HM_height), daemon=True)
+#         thread.start()
+#         print("started Hand Movement Window")
+#     except Exception as e:
+#         print(f"Error in HM_window thread: {e}")
 
 def start_HM_window(HM_width, HM_height):
-    import cv2
-    # AI generated (threading optimization)
+    """Démarre la fenêtre de tracking des mains"""
+    global hm_window_instance
+
     try:
-        cv2.destroyAllWindows()  # Close any existing OpenCV windows
-        thread = threading.Thread(target=threaded_hm_window_runner, args=(HM_width, HM_height), daemon=True)
-        thread.start()
-        print("started Hand Movement Window")
+        cv2.destroyAllWindows()
+
+        # Créer l'instance
+        hm_window_instance = HM_window.HM_window(HM_width, HM_height)
+
+        # Démarrer le thread de la caméra
+        hm_window_instance.start_camera_thread("basic")
+
+        # Fermer la fenêtre de configuration
+        app.withdraw()
+
+        # Lancer Tkinter dans le thread principal (BLOQUANT)
+        # Cette ligne ne retournera que quand la fenêtre Tkinter sera fermée
+        hm_window_instance.run_tkinter()
+
+        # Quand Tkinter se ferme, réafficher la fenêtre de config
+        app.deiconify()
+
+        print("HM_window closed, returning to configurator")
+
     except Exception as e:
-        print(f"Error in HM_window thread: {e}")
+        print(f"Error in HM_window: {e}")
+        import traceback
+        traceback.print_exc()
 
 def checkbox_event():
     pass
