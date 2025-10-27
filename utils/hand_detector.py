@@ -3,7 +3,7 @@ Name:         hand_detector.py
 Author:       Alex Kamano, Kilian Testard, Alexandre Ramirez, Nathan Filipowitz et Fabian Rostello
 Date:         03.04.2025
 Version:      0.1
-Description:  Hand detector class
+Description:  Hand detector class using mediapipe
 """
 
 import mediapipe as mp
@@ -18,7 +18,7 @@ class HandDetector:
                                    min_tracking_confidence=min_tracking_confidence)
         self.original_image = ""
 
-
+    # Get hand landmarks from a frame
     def get_hand_landmarks(self, frame):
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # mediapipe needs RGB
         results = self.hands.process(frame)

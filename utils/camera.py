@@ -1,9 +1,9 @@
 """
 Name:         camera.py
 Author:       Alex Kamano, Kilian Testard, Alexandre Ramirez, Nathan Filipowitz et Fabian Rostello
-Date:         03.04.2025
+Date:         27.10.2025
 Version:      0.1
-Description:  Camera creation with opencv
+Description:  Camera creation with opencv and queue for threading
 """
 
 from utils.hand_detector import HandDetector
@@ -39,17 +39,6 @@ class VideoCamera(object):
 
         self.update_frame()
 
-    def read(self):
-        while self.status:
-            self.success, frame = self.cap.read()
-            if self.success:
-                # flip for mirror effect
-                # self.frame = cv2.flip(frame, 1)
-                self.frame = frame
-            else:
-                print("Failed to read frame")
-                break
-
     def camera_worker(self):
         while self.status:
             self.success, frame = self.cap.read()
@@ -62,11 +51,10 @@ class VideoCamera(object):
 
     def update_frame(self):
         try:
-            self.frame_queue.get_nowait()       # IA: How to transfer images between threads
+            frame = self.frame_queue.get_nowait()       # IA: How to transfer images between threads
             self.landmarks_queue.get_nowait()
-            # if frame is not None:
-            #     cv2.imshow("capture image", frame)        # Activer/désactiver visulisation caméra
-
+            if frame is not None:
+                cv2.imshow("capture image", frame)        # Activate/deactivate camera visualisation
         except queue.Empty:
             pass
 
@@ -78,6 +66,7 @@ class VideoCamera(object):
         except queue.Empty:
             return None
 
+    # Close camera
     def release(self):
         self.status = False
         self.cap.release()

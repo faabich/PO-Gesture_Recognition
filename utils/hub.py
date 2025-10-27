@@ -1,9 +1,16 @@
+"""
+Name:         hub.py
+Author:       Alex Kamano, Kilian Testard, Alexandre Ramirez, Nathan Filipowitz et Fabian Rostello
+Date:         27.10.2025
+Version:      0.1
+Description:  The tkinter hub with buttons to launch games or open urls
+"""
+
 import os
 import customtkinter as ctk
 from PIL import Image, ImageTk
 from utils.camera import VideoCamera
 from utils.gesture import Gesture
-from utils.hand_detector import HandDetector
 import ctypes
 import subprocess
 import webbrowser
@@ -18,21 +25,20 @@ class Hub(ctk.CTk):
         self.name = "Hub"
         self.width = width
         self.height = height
-        self.running = True
         self.canvas = None
-        self.camera = VideoCamera(self)
-        self.hand_detector = HandDetector()
-        self.camera.frame = None
         self.preset = None
         self.landmarks = None
+
+        # Objects
+        self.camera = VideoCamera(self)
+        self.gestures = Gesture(self, self.camera)
 
         # Configuration ctypes pour Windows
         self.user32 = ctypes.windll.user32
         self.SCREEN_WIDTH = self.user32.GetSystemMetrics(0)  # SM_CXSCREEN constant
         self.SCREEN_HEIGHT = self.user32.GetSystemMetrics(1)  # SM_CYSCREEN constant
 
-        self.gestures = Gesture(self, self.camera)
-
+        # Hub parameters
         self.title("Hand Gesture Recognition Configurator")
         self.geometry(f"{self.width}x{self.height}")
         self.minsize(400, 400)
@@ -50,15 +56,15 @@ class Hub(ctk.CTk):
         self.stop_event = threading.Event()
 
         self.initialize()
-        # self.initialize_clickthrough_window()
         self.update_gesture()
 
-    def initialize(self, parameter=None):
+    def initialize(self):
+        # Wait for camera to be ready
         while not self.camera.success:
             print("waiting for camera...")
             time.sleep(0.5)
 
-        """BUTTONS"""
+        # BUTTONS
         # Resolve img folder relative to THIS file's project root (main.py is at project root)
         root_dir = os.path.dirname(os.path.abspath(__file__))
         img_folder = os.path.join(root_dir, "img")
@@ -203,7 +209,7 @@ class Hub(ctk.CTk):
                     case "particle love":
                         self.gestures.mouse_mode(self.landmarks)
 
-        self.after(5, self.update_gesture)
+        self.after(5, self.update_gesture)      # Continuously update gestures
 
     def open_program(self, folder, program_name, preset=None):
         try:
@@ -217,13 +223,11 @@ class Hub(ctk.CTk):
             print("open_program error:", e)
 
         self.preset = preset
-        # self.change_preset(preset)
 
 
     def open_url(self, url, preset=None):
         try:
             webbrowser.open(url)
             self.preset = preset
-            # self.change_preset(preset)
-        except Exception:
-            pass
+        except Exception as e:
+            print("open_url error:", e)

@@ -3,7 +3,7 @@ Name:         gesture.py
 Author:       Alex Kamano, Kilian Testard, Alexandre Ramirez, Nathan Filipowitz et Fabian Rostello
 Date:         03.04.2025
 Version:      0.3 - Fixed Windows Touch Injection Error 87
-Description:  Multiple gesture recognition with robust error handling
+Description:  Multiple gesture recognition
 """
 
 import time
@@ -39,8 +39,6 @@ class Gesture:
         self.hand_data_queue = Queue(maxsize=2)  # Limite pour éviter l'accumulation
         self.lock = Lock()
 
-        self._img_reference = None
-
         # Enhanced hand tracking
         self.manager = touch.TouchManager(2)
         self.hand_info = {}
@@ -53,11 +51,11 @@ class Gesture:
         self.initialize_tkinter_window()
 
     def initialize_tkinter_window(self):
-        """Initialise la fenêtre Tkinter (DOIT être appelé depuis le thread principal)"""
+        """Initialise la fenêtre Tkinter"""
         if self.root is not None:
             return  # Déjà initialisé
 
-        # Création de la fenêtre Tkinter
+        # Create tkinter window
         self.root = tk.Tk()
         self.root.title("Hand Circles")
         self.root.attributes("-topmost", True)
@@ -67,7 +65,7 @@ class Gesture:
         self.root.overrideredirect(True)
         self.root.config(bg="black")
 
-        # Création du canvas
+        # Create canvas ffor circles
         self.canvas = tk.Canvas(
             self.root,
             width=self.SCREEN_WIDTH,
@@ -94,6 +92,7 @@ class Gesture:
             return False
 
 
+    # Check if fingers are closed from landmarks
     @staticmethod
     def is_fingers_closed(landmarks):
         """
@@ -113,7 +112,7 @@ class Gesture:
 
         return distance1 < threshold and distance2 < threshold and distance3 < threshold
 
-
+    # Update circles display
     def update_circles(self, hand_positions):
         """Met à jour l'affichage des cercles avec gestion d'erreur"""
         try:
@@ -167,9 +166,7 @@ class Gesture:
 
                 # Afficher les cercles
                 self.update_circles({h: info["pos"] for h, info in self.hand_info.items()})
-            # self.update_display({h: info["pos"] for h, info in self.hand_info.items()})
 
-        # --- Inject touches en fonction de l'état ---
         # Tracker les mains en fonction de l'id
         hand_map = {"Left": 0, "Right": 1}
 
