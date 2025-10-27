@@ -23,4 +23,4 @@ class HandDetector:
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # mediapipe needs RGB
         results = self.hands.process(frame)
 
-        return results, self.mp_drawing, self.mp_hands
+        return results
